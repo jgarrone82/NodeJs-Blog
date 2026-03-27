@@ -1,14 +1,5 @@
 const express = require('express')
 const router = express.Router()
-const mysql = require('mysql')
-
-var pool = mysql.createPool({
-  connectionLimit: 20,
-  host: 'localhost',
-  user: 'root',
-  password: 'jOrgE1982!',
-  database: 'blog_viajes'
-})
 
 router.use('/admin/', (peticion, respuesta, siguiente) => {
   if (!peticion.session.usuario) {
@@ -19,6 +10,5 @@ router.use('/admin/', (peticion, respuesta, siguiente) => {
     siguiente()
   }
 })
-
 
 module.exports = router

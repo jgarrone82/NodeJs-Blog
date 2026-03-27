@@ -1,27 +1,19 @@
 const express = require('express')
 const router = express.Router()
-const mysql = require('mysql')
-
-var pool = mysql.createPool({
-  connectionLimit: 20,
-  host: 'localhost',
-  user: 'root',
-  password: 'jOrgE1982!',
-  database: 'blog_viajes'
-})
+const pool = require('../db')
 
 router.get('/admin/index', (peticion, respuesta) => {
   pool.getConnection((err, connection) => {
-    const consulta = `
-      SELECT *
-      FROM publicaciones
-      WHERE
-      autor_id = ${connection.escape(peticion.session.usuario.id)}
-    `
+    if (err) {
+      console.error('Error de conexión:', err)
+      return respuesta.status(500).send('Error del servidor')
+    }
+
+    const consulta = `SELECT * FROM publicaciones WHERE autor_id = ${connection.escape(peticion.session.usuario.id)}`
     connection.query(consulta, (error, filas, campos) => {
+      connection.release()
       respuesta.render('admin/index', { usuario: peticion.session.usuario, mensaje: peticion.flash('mensaje'), publicaciones: filas })
     })
-    connection.release()
   })
 })
 
@@ -36,14 +28,16 @@ router.get('/admin/agregar', (peticion, respuesta) => {
 
 router.post('/admin/procesar_agregar', (peticion, respuesta) => {
   pool.getConnection((err, connection) => {
+    if (err) {
+      console.error('Error de conexión:', err)
+      return respuesta.status(500).send('Error del servidor')
+    }
+
     const date = new Date()
     const fecha = `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`
     const consulta = `
-      INSERT INTO
-      publicaciones
-      (titulo, resumen, contenido, autor_id, fecha_hora)
-      VALUES
-      (
+      INSERT INTO publicaciones (titulo, resumen, contenido, autor_id, fecha_hora)
+      VALUES (
         ${connection.escape(peticion.body.titulo)},
         ${connection.escape(peticion.body.resumen)},
         ${connection.escape(peticion.body.contenido)},
@@ -52,38 +46,45 @@ router.post('/admin/procesar_agregar', (peticion, respuesta) => {
       )
     `
     connection.query(consulta, (error, filas, campos) => {
+      connection.release()
       peticion.flash('mensaje', 'Publicación agregada')
       respuesta.redirect("/admin/index")
     })
-    connection.release()
   })
 })
 
 router.get('/admin/editar/:id', (peticion, respuesta) => {
   pool.getConnection((err, connection) => {
+    if (err) {
+      console.error('Error de conexión:', err)
+      return respuesta.status(500).send('Error del servidor')
+    }
+
     const consulta = `
       SELECT * FROM publicaciones
-      WHERE
-      id = ${connection.escape(peticion.params.id)}
-      AND
-      autor_id = ${connection.escape(peticion.session.usuario.id)}
+      WHERE id = ${connection.escape(peticion.params.id)}
+      AND autor_id = ${connection.escape(peticion.session.usuario.id)}
     `
     connection.query(consulta, (error, filas, campos) => {
-      if (filas.length > 0){
-        respuesta.render('admin/editar', {publicacion: filas[0], mensaje: peticion.flash('mensaje'), usuario: peticion.session.usuario})
+      connection.release()
+      if (filas.length > 0) {
+        respuesta.render('admin/editar', { publicacion: filas[0], mensaje: peticion.flash('mensaje'), usuario: peticion.session.usuario })
       }
-      else{
+      else {
         peticion.flash('mensaje', 'Operación no permitida')
         respuesta.redirect("/admin/index")
       }
     })
-    connection.release()
   })
 })
 
 router.post('/admin/procesar_editar', (peticion, respuesta) => {
   pool.getConnection((err, connection) => {
-    console.log(peticion.body.contenido);
+    if (err) {
+      console.error('Error de conexión:', err)
+      return respuesta.status(500).send('Error del servidor')
+    }
+
     const consulta = `
       UPDATE publicaciones
       SET
@@ -96,39 +97,42 @@ router.post('/admin/procesar_editar', (peticion, respuesta) => {
       autor_id = ${connection.escape(peticion.session.usuario.id)}
     `
     connection.query(consulta, (error, filas, campos) => {
-      if (filas && filas.changedRows > 0){
+      connection.release()
+      if (filas && filas.changedRows > 0) {
         peticion.flash('mensaje', 'Publicación editada')
       }
-      else{
+      else {
         peticion.flash('mensaje', 'Publicación no editada')
       }
       respuesta.redirect("/admin/index")
     })
-    connection.release()
   })
 })
 
-router.get('/admin/procesar_eliminar/:id', (peticion, respuesta) => {
+router.post('/admin/procesar_eliminar', (peticion, respuesta) => {
   pool.getConnection((err, connection) => {
+    if (err) {
+      console.error('Error de conexión:', err)
+      return respuesta.status(500).send('Error del servidor')
+    }
+
     const consulta = `
-      DELETE
-      FROM
-      publicaciones
+      DELETE FROM publicaciones
       WHERE
-      id = ${connection.escape(peticion.params.id)}
+      id = ${connection.escape(peticion.body.id)}
       AND
       autor_id = ${connection.escape(peticion.session.usuario.id)}
     `
     connection.query(consulta, (error, filas, campos) => {
-      if (filas && filas.affectedRows > 0){
+      connection.release()
+      if (filas && filas.affectedRows > 0) {
         peticion.flash('mensaje', 'Publicación eliminada')
       }
-      else{
+      else {
         peticion.flash('mensaje', 'Publicación no eliminada')
       }
       respuesta.redirect("/admin/index")
     })
-    connection.release()
   })
 })
 

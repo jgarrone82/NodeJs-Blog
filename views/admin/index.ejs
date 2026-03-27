@@ -53,10 +53,10 @@
                   Editar
                 </a>
                 |
-                <a href="/admin/procesar_eliminar/<%=publicacion.id%>" onclick="return confirm('¿Está seguro de eliminar: <%=publicacion.titulo%>?')"><span
-                    class="icon-alert"></span>
-                  Eliminar
-                </a>
+                <form action="/admin/procesar_eliminar" method="POST" style="display:inline" onsubmit="return confirm('¿Está seguro de eliminar: <%=publicacion.titulo%>?')">
+                  <input type="hidden" name="id" value="<%=publicacion.id%>">
+                  <button type="submit" style="background:none;border:none;color:inherit;cursor:pointer;padding:0"><span class="icon-alert"></span> Eliminar</button>
+                </form>
               </td>
             </tr>
             <% }) %>
