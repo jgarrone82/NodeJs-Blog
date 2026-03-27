@@ -1,38 +1,38 @@
-# NodeJs Blog — Blog de Viajes
+# NodeJs Blog — Travel Blog
 
-Blog de viajes construido con Node.js, Express, MySQL y EJS. Permite registro de usuarios, publicación de artículos, sistema de votos y una API REST.
+Travel blog built with Node.js, Express, MySQL, and EJS. Features user registration, article publishing, voting system, and a REST API.
 
-## Características
+## Features
 
-- Registro e inicio de sesión con contraseñas hasheadas (bcrypt)
-- CRUD completo de publicaciones (crear, editar, eliminar)
-- Sistema de votos en publicaciones
-- Subida de avatares para autores
-- Envío de correo de bienvenida (Nodemailer + Gmail)
-- Búsqueda de publicaciones
-- Paginación
-- API REST pública (v1)
-- Panel de administración protegido por sesión
+- User registration and login with hashed passwords (bcrypt)
+- Full CRUD for posts (create, edit, delete)
+- Post voting system
+- Author avatar uploads
+- Welcome email delivery (Nodemailer + Gmail)
+- Post search
+- Pagination
+- Public REST API (v1)
+- Session-protected admin panel
 
-## Stack
+## Tech Stack
 
-| Componente | Tecnología |
+| Component | Technology |
 |-----------|-----------|
 | Runtime | Node.js |
 | Framework | Express 4.x |
-| Base de datos | MySQL |
-| Motor de vistas | EJS |
-| Autenticación | express-session + bcrypt |
-| Archivos | express-fileupload |
+| Database | MySQL |
+| View Engine | EJS |
+| Authentication | express-session + bcrypt |
+| File Uploads | express-fileupload |
 | Email | Nodemailer |
 
-## Requisitos previos
+## Prerequisites
 
 - Node.js 18+
-- MySQL 5.7+ o MariaDB 10.3+
-- Una cuenta de Gmail con [App Password](https://support.google.com/accounts/answer/185833) habilitado
+- MySQL 5.7+ or MariaDB 10.3+
+- Gmail account with [App Password](https://support.google.com/accounts/answer/185833) enabled
 
-## Instalación
+## Installation
 
 ```bash
 git clone https://github.com/jgarrone82/NodeJs-Blog.git
@@ -40,15 +40,15 @@ cd NodeJs-Blog
 npm install
 ```
 
-## Configuración
+## Configuration
 
-Crear el archivo `.env` a partir del ejemplo:
+Create the `.env` file from the example:
 
 ```bash
 cp .env.example .env
 ```
 
-Editar `.env` con tus valores:
+Edit `.env` with your values:
 
 ```env
 DB_HOST=localhost
@@ -62,9 +62,9 @@ GMAIL_USER=your_email@gmail.com
 GMAIL_PASS=your_app_password_here
 ```
 
-## Base de datos
+## Database
 
-Crear la base de datos y las tablas:
+Create the database and tables:
 
 ```sql
 CREATE DATABASE blog_viajes;
@@ -91,27 +91,27 @@ CREATE TABLE publicaciones (
 );
 ```
 
-## Ejecución
+## Running
 
 ```bash
-npm run dev    # Desarrollo (con nodemon)
-node webapp.js # Producción
+npm run dev    # Development (with nodemon)
+node webapp.js # Production
 ```
 
-El servidor arranca en `http://localhost:8080`
+The server starts at `http://localhost:8080`
 
-## API REST
+## REST API
 
-| Método | Endpoint | Descripción |
+| Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/api/v1/publicaciones/` | Listar publicaciones (query: `busqueda`) |
-| GET | `/api/v1/publicaciones/:id` | Obtener publicación por ID |
-| POST | `/api/v1/publicaciones/` | Crear publicación (query: `email`, `contrasena`) |
-| DELETE | `/api/v1/publicaciones/:id` | Eliminar publicación (query: `email`, `contrasena`) |
-| GET | `/api/v1/autores/` | Listar autores |
-| GET | `/api/v1/autores/:id` | Obtener autor con sus publicaciones |
-| POST | `/api/v1/autores/` | Registrar autor (body: `email`, `contrasena`, `pseudonimo`) |
+| GET | `/api/v1/publicaciones/` | List posts (query: `busqueda`) |
+| GET | `/api/v1/publicaciones/:id` | Get post by ID |
+| POST | `/api/v1/publicaciones/` | Create post (query: `email`, `contrasena`) |
+| DELETE | `/api/v1/publicaciones/:id` | Delete post (query: `email`, `contrasena`) |
+| GET | `/api/v1/autores/` | List authors |
+| GET | `/api/v1/autores/:id` | Get author with their posts |
+| POST | `/api/v1/autores/` | Register author (body: `email`, `contrasena`, `pseudonimo`) |
 
-## Licencia
+## License
 
 ISC
