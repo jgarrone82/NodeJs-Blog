@@ -64,7 +64,18 @@ GMAIL_PASS=your_app_password_here
 
 ## Database
 
-Create the database and tables:
+### Option 1: Import from provided dumps (recommended)
+
+```bash
+# Create database
+mysql -u root -p -e "CREATE DATABASE IF NOT EXISTS blog_viajes;"
+
+# Import tables and data
+mysql -u root -p blog_viajes < Dump/blog_viajes_autores.sql
+mysql -u root -p blog_viajes < Dump/blog_viajes_publicaciones.sql
+```
+
+### Option 2: Create tables manually
 
 ```sql
 CREATE DATABASE blog_viajes;
@@ -91,6 +102,23 @@ CREATE TABLE publicaciones (
 );
 ```
 
+### Authentication compatibility
+
+MySQL 8.0+ uses `caching_sha2_password` by default, which isn't compatible with the older `mysql` npm package. To fix `ER_NOT_SUPPORTED_AUTH_MODE` errors, switch to `mysql_native_password`:
+
+```sql
+-- For root user (development only)
+ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '';
+FLUSH PRIVILEGES;
+
+-- For dedicated user (recommended)
+CREATE USER 'bloguser'@'localhost' IDENTIFIED WITH mysql_native_password BY 'your_password';
+GRANT ALL PRIVILEGES ON blog_viajes.* TO 'bloguser'@'localhost';
+FLUSH PRIVILEGES;
+```
+
+> **Note:** The provided dumps in `Dump/` directory include sample data with example authors and posts. Importing them is recommended for quick setup.
+
 ## Running
 
 ```bash
@@ -112,6 +140,31 @@ The server starts at `http://localhost:8080`
 | GET | `/api/v1/autores/:id` | Get author with their posts |
 | POST | `/api/v1/autores/` | Register author (body: `email`, `contrasena`, `pseudonimo`) |
 
-## License
+## Troubleshooting
+
+### MySQL authentication error
+
+If you see `ER_NOT_SUPPORTED_AUTH_MODE`, ensure you've switched to `mysql_native_password` as described above.
+
+### EJS syntax errors
+
+If you encounter EJS compilation errors, check that includes use the correct syntax:
+```ejs
+<!-- Correct -->
+<% include('partials/header') %>
+
+<!-- Incorrect (deprecated) -->
+<% include ./partials/header %>
+```
+
+### Port already in use
+
+If port 8080 is busy:
+```bash
+# Find process using port 8080
+lsof -ti:8080
+# Kill it
+kill -9 <PID>
+```
 
 ISC
