@@ -2,6 +2,10 @@ const express = require('express')
 const router = express.Router()
 const bcrypt = require('bcrypt')
 const pool = require('../db')
+const { apiLimiter, authLimiter } = require('./rateLimiter')
+
+// Apply rate limiting to all API routes
+router.use('/api/v1/', apiLimiter)
 
 router.get('/api/v1/publicaciones/:id', async (peticion, respuesta) => {
   try {
@@ -67,7 +71,7 @@ router.get('/api/v1/autores/:id', async (peticion, respuesta) => {
   }
 })
 
-router.post('/api/v1/publicaciones/', async (peticion, respuesta) => {
+router.post('/api/v1/publicaciones/', authLimiter, async (peticion, respuesta) => {
   let connection
   try {
     const email = (peticion.query.email) ? peticion.query.email : ""
@@ -120,7 +124,7 @@ router.post('/api/v1/publicaciones/', async (peticion, respuesta) => {
   }
 })
 
-router.delete('/api/v1/publicaciones/:id', async (peticion, respuesta) => {
+router.delete('/api/v1/publicaciones/:id', authLimiter, async (peticion, respuesta) => {
   try {
     const email = (peticion.query.email) ? peticion.query.email : ""
     const contrasena = (peticion.query.contrasena) ? peticion.query.contrasena : ""
@@ -200,7 +204,7 @@ router.get('/api/v1/publicaciones/', async (peticion, respuesta) => {
   }
 })
 
-router.post('/api/v1/autores/', async (peticion, respuesta) => {
+router.post('/api/v1/autores/', authLimiter, async (peticion, respuesta) => {
   let connection
   try {
     const email = peticion.body.email.toLowerCase().trim()

@@ -1,5 +1,6 @@
 require('dotenv').config()
 const express = require('express')
+const helmet = require('helmet')
 const aplicacion = express()
 const session = require('express-session')
 const flash = require('express-flash')
@@ -9,6 +10,11 @@ const rutasMiddleware = require('./routes/middleware')
 const rutasPublicas = require('./routes/publicas')
 const rutasPrivadas = require('./routes/privadas')
 const rutasApi = require('./routes/api')
+
+// Security headers
+aplicacion.use(helmet({
+  contentSecurityPolicy: false // Disabled until inline scripts are refactored
+}))
 
 aplicacion.use(express.json())
 aplicacion.use(express.urlencoded({ extended: true }))

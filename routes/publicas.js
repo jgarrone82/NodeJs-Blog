@@ -4,6 +4,7 @@ const bcrypt = require('bcrypt')
 const path = require('path')
 const nodemailer = require('nodemailer')
 const pool = require('../db')
+const { authLimiter } = require('./rateLimiter')
 
 const transporter = nodemailer.createTransport({
   service: 'gmail',
@@ -64,7 +65,7 @@ router.get('/registro', (peticion, respuesta) => {
   respuesta.render('registro', { mensaje: peticion.flash('mensaje') })
 })
 
-router.post('/procesar_registro', async (peticion, respuesta) => {
+router.post('/procesar_registro', authLimiter, async (peticion, respuesta) => {
   let connection
   try {
     connection = await pool.getConnection()
@@ -129,7 +130,7 @@ router.get('/inicio', (peticion, respuesta) => {
   respuesta.render('inicio', { mensaje: peticion.flash('mensaje') })
 })
 
-router.post('/procesar_inicio', async (peticion, respuesta) => {
+router.post('/procesar_inicio', authLimiter, async (peticion, respuesta) => {
   try {
     const [filas] = await pool.query(
       'SELECT * FROM autores WHERE email = ?',
