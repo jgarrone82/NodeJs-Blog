@@ -29,6 +29,11 @@ aplicacion.use(rutasPublicas)
 aplicacion.use(rutasPrivadas)
 aplicacion.use(rutasApi)
 
-aplicacion.listen(8080, () => {
-  console.log("Servidor iniciado")
-})
+// Only start server when run directly (not when required by tests)
+if (require.main === module) {
+  aplicacion.listen(8080, () => {
+    console.log("Servidor iniciado")
+  })
+}
+
+module.exports = aplicacion
