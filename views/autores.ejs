@@ -6,44 +6,44 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="X-UA-Compatible" content="ie=edge">
   <title>Blog Viajes</title>
-  <link rel="stylesheet" href="/stylesheets/estilos.css">
-  <link rel="stylesheet" href="/stylesheets/mini-default.min.css">
+  <link rel="stylesheet" href="/stylesheets/styles.css">
   <link rel="shortcut icon" type="image/png" href="images/favicon.png"/>
 </head>
 
 <body>
-  <% include('./partials/encabezado_publico') %>
+  <%- include('./partials/encabezado_publico') %>
 
-  <div class="container">
-    <img src="images/fondo.jpg" width="100%">
-    <h1>Autores</h1>
+  <main class="page-container">
+    <img src="images/fondo.jpg" class="hero-image" alt="Blog de Viajes">
+    <h1 class="text-3xl font-bold mb-2">Autores</h1>
+    <p class="text-text-muted mb-6">Conoce a nuestros autores:</p>
 
-    <p>Conoce a nuestros autores:</p>
-
-    <% autores.forEach(autor => { %>
-      <div class="col-sm-12">
-        <div class="card fluid ">
-          <h3 class="section">
-            <% if (autor.avatar && autor.avatar != "") { %>
-              <img class="avatar" src="/avatars/<%=autor.avatar%>" />
-              <% } else {
-              %>
-              <span class="icon-user"></span>
-              <% } %>
-            <%=autor.pseudonimo%>
-          </h3>
-          <ul>
-            <% autor.publicaciones.forEach(publicacion => { %>
-              <li><a href="/publicacion/<%=publicacion.id%>"><%=publicacion.titulo%></a></li>
-            <% }) %>
-          </ul>
-        </div>
-      </div>
+    <div class="space-y-6">
+      <% autores.forEach(autor => { %>
+      <article class="post-card">
+        <h3 class="flex items-center gap-2">
+          <% if (autor.avatar && autor.avatar != "") { %>
+            <img class="avatar" src="/avatars/<%=autor.avatar%>" alt="Avatar"/>
+          <% } else { %>
+            <svg class="w-5 h-5 text-text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+          <% } %>
+          <%=autor.pseudonimo%>
+        </h3>
+        <ul class="px-4 pb-4 space-y-1">
+          <% autor.publicaciones.forEach(publicacion => { %>
+            <li>
+              <a href="/publicacion/<%=publicacion.id%>" class="text-primary hover:text-primary-dark transition-colors">
+                <%=publicacion.titulo%>
+              </a>
+            </li>
+          <% }) %>
+        </ul>
+      </article>
       <% }) %>
     </div>
-  </div>
+  </main>
 
-  <% include('./partials/pie') %>
+  <%- include('./partials/pie') %>
   <script src="/javascripts/script.js"></script>
 </body>
 

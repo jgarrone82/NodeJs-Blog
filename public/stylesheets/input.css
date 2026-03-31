@@ -1,0 +1,166 @@
+@import "tailwindcss";
+
+/* Custom theme - Blog de Viajes */
+@theme {
+  --color-primary: #2563eb;
+  --color-primary-dark: #1d4ed8;
+  --color-accent: #f59e0b;
+  --color-accent-dark: #d97706;
+  --color-surface: #ffffff;
+  --color-background: #f3f4f6;
+  --color-text: #1f2937;
+  --color-text-muted: #6b7280;
+  --color-border: #e5e7eb;
+}
+
+/* Base styles */
+body {
+  @apply bg-background text-text min-h-screen;
+}
+
+/* Header styles */
+.site-header {
+  @apply bg-primary text-white shadow-md sticky top-0 z-50;
+}
+
+.site-header a.logo {
+  @apply text-xl font-bold px-4 py-3 inline-block hover:text-accent transition-colors;
+}
+
+.site-header nav a {
+  @apply px-4 py-3 inline-block text-sm font-medium hover:bg-primary-dark transition-colors;
+}
+
+/* Card styles */
+.post-card {
+  @apply bg-surface rounded-lg shadow-md overflow-hidden transition-shadow hover:shadow-lg;
+}
+
+.post-card h3 {
+  @apply text-lg font-semibold p-4 pb-2;
+}
+
+.post-card h3 a {
+  @apply text-text hover:text-primary transition-colors;
+}
+
+.post-card .meta {
+  @apply text-sm text-text-muted px-4 pb-2 border-t border-border;
+}
+
+.post-card .excerpt {
+  @apply px-4 pb-4 text-text;
+}
+
+/* Form styles */
+.form-field {
+  @apply mb-4;
+}
+
+.form-field label {
+  @apply block text-sm font-medium text-text mb-1;
+}
+
+.form-field input[type="text"],
+.form-field input[type="email"],
+.form-field input[type="password"],
+.form-field textarea {
+  @apply w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-shadow;
+}
+
+.form-field input[type="file"] {
+  @apply block w-full text-sm text-text-muted file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-white hover:file:bg-primary-dark;
+}
+
+/* Button styles */
+.btn {
+  @apply inline-flex items-center px-4 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer border border-transparent;
+}
+
+.btn-primary {
+  @apply bg-primary text-white hover:bg-primary-dark;
+}
+
+.btn-accent {
+  @apply bg-accent text-white hover:bg-accent-dark;
+}
+
+.btn-outline {
+  @apply bg-transparent border-border text-text hover:bg-background;
+}
+
+.btn-sm {
+  @apply px-3 py-1 text-xs;
+}
+
+/* Table styles */
+.data-table {
+  @apply w-full border-collapse;
+}
+
+.data-table th {
+  @apply bg-background text-left text-sm font-semibold text-text-muted px-4 py-3 border-b border-border;
+}
+
+.data-table td {
+  @apply px-4 py-3 border-b border-border text-sm;
+}
+
+.data-table tr:hover td {
+  @apply bg-background/50;
+}
+
+/* Footer */
+.site-footer {
+  @apply bg-text text-text-muted text-center py-6 mt-12;
+}
+
+/* Alert styles */
+.alert {
+  @apply p-4 rounded-md mb-4;
+}
+
+.alert-info {
+  @apply bg-blue-50 text-blue-800 border border-blue-200;
+}
+
+.alert-success {
+  @apply bg-green-50 text-green-800 border border-green-200;
+}
+
+.alert-error {
+  @apply bg-red-50 text-red-800 border border-red-200;
+}
+
+/* Tag/vote badge */
+.vote-badge {
+  @apply inline-block bg-accent text-white text-xs font-bold px-2 py-1 rounded ml-2;
+}
+
+/* Avatar */
+.avatar {
+  @apply w-6 h-6 rounded-full inline-block align-middle object-cover;
+}
+
+/* Pagination */
+.pagination {
+  @apply flex items-center justify-center gap-4 py-6 text-sm;
+}
+
+.pagination a {
+  @apply text-primary hover:text-primary-dark font-medium transition-colors;
+}
+
+.pagination span {
+  @apply text-text-muted;
+}
+
+/* Container */
+.page-container {
+  @apply max-w-4xl mx-auto px-4 py-6;
+}
+
+/* Hero image */
+.hero-image {
+  @apply w-full rounded-lg mb-6 object-cover;
+}

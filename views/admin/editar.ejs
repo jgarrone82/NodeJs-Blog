@@ -6,79 +6,65 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="X-UA-Compatible" content="ie=edge">
   <title>Blog Viajes</title>
-  <link rel="stylesheet" href="/stylesheets/estilos.css">
-  <link rel="stylesheet" href="/stylesheets/mini-default.min.css">
+  <link rel="stylesheet" href="/stylesheets/styles.css">
   <script src="/javascripts/ckeditor5-build-classic/ckeditor.js"></script>
 </head>
 
 <body>
-  <% include('../partials/encabezado_privado') %>
+  <%- include('../partials/encabezado_privado') %>
 
-  <div class="container">
-    <h1>Admin - Agregar publicación</h1>
-    <hr>
+  <main class="page-container">
+    <h1 class="text-3xl font-bold mb-2">Admin - Editar publicación</h1>
+    <hr class="border-border mb-6">
 
-    <div class="row">
-
-      <div class="col-sm-12">
-
-        <% if (mensaje && mensaje.length > 0) { %>
-        <h4><span class="icon-info"></span>
-          <%=mensaje%>
-        </h4>
-        <% } %>
-
-        <form action="/admin/procesar_editar" method="POST">
-          <input type="hidden" name="id" value="<%=publicacion.id%>">
-          <fieldset>
-            <legend>Datos de publicación</legend>
-            <p>
-              <label for="titulo">Título</label>
-              <br>
-              <input type="text" id="titulo" name="titulo" required="true" value="<%=publicacion.titulo%>" />
-            </p>
-            <p>
-              <label for="resumen">Resumen</label>
-              <br>
-              <textarea id="resumen" name="resumen"><%=publicacion.resumen%></textarea>
-            </p>
-            <p>
-              <label for="contenido">Contenido</label>
-              <br>
-              <textarea id="contenido" name="contenido"><%=publicacion.contenido%></textarea>
-            </p>
-
-            <p>
-              <input class="primary" type="submit" value="Continuar" />
-            </p>
-          </fieldset>
-        </form>
-
-        <script>
-          ClassicEditor
-            .create(document.querySelector('#contenido'), {
-              toolbar: ['heading', '|', 'bold', 'italic', 'link', 'bulletedList', 'numberedList', 'blockQuote'],
-              heading: {
-                options: [
-                  { model: 'paragraph', title: 'Paragraph', class: 'ck-heading_paragraph' },
-                  { model: 'heading1', view: 'h1', title: 'Heading 1', class: 'ck-heading_heading1' },
-                  { model: 'heading2', view: 'h2', title: 'Heading 2', class: 'ck-heading_heading2' }
-                ]
-              }
-            })
-            .catch(error => {
-              console.error(error);
-            });
-        </script>
-
-      </div>
+    <% if (mensaje && mensaje.length > 0) { %>
+    <div class="alert alert-info">
+      <svg class="w-5 h-5 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+      <%=mensaje%>
     </div>
+    <% } %>
 
-  </div>
+    <form action="/admin/procesar_editar" method="POST" class="max-w-2xl">
+      <input type="hidden" name="id" value="<%=publicacion.id%>">
+      <h2 class="text-lg font-semibold mb-4 pb-3 border-b border-border">Datos de publicación</h2>
+      
+      <div class="form-field">
+        <label for="titulo">Título</label>
+        <input type="text" id="titulo" name="titulo" required value="<%=publicacion.titulo%>" />
+      </div>
+      
+      <div class="form-field">
+        <label for="resumen">Resumen</label>
+        <textarea id="resumen" name="resumen" rows="3"><%=publicacion.resumen%></textarea>
+      </div>
+      
+      <div class="form-field">
+        <label for="contenido">Contenido</label>
+        <textarea id="contenido" name="contenido"><%=publicacion.contenido%></textarea>
+      </div>
 
-  <% include('../partials/pie') %>
+      <button type="submit" class="btn btn-primary">Continuar</button>
+    </form>
 
+    <script>
+      ClassicEditor
+        .create(document.querySelector('#contenido'), {
+          toolbar: ['heading', '|', 'bold', 'italic', 'link', 'bulletedList', 'numberedList', 'blockQuote'],
+          heading: {
+            options: [
+              { model: 'paragraph', title: 'Paragraph', class: 'ck-heading_paragraph' },
+              { model: 'heading1', view: 'h1', title: 'Heading 1', class: 'ck-heading_heading1' },
+              { model: 'heading2', view: 'h2', title: 'Heading 2', class: 'ck-heading_heading2' }
+            ]
+          }
+        })
+        .catch(error => {
+          console.error(error);
+        });
+    </script>
+  </main>
 
+  <%- include('../partials/pie') %>
   <script src="/javascripts/script.js"></script>
 </body>
 

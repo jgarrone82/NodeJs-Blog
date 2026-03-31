@@ -4,9 +4,11 @@
   "description": "",
   "main": "webapp.js",
   "scripts": {
-    "dev": "nodemon webapp.js",
+    "dev": "concurrently \"npm run css:watch\" \"nodemon webapp.js\"",
     "test": "jest --verbose",
-    "test:coverage": "jest --coverage"
+    "test:coverage": "jest --coverage",
+    "css:build": "tailwindcss -i ./public/stylesheets/input.css -o ./public/stylesheets/styles.css",
+    "css:watch": "tailwindcss -i ./public/stylesheets/input.css -o ./public/stylesheets/styles.css --watch"
   },
   "author": "",
   "license": "ISC",
@@ -26,14 +28,25 @@
     "nodemon": "^3.1.14"
   },
   "devDependencies": {
+    "@tailwindcss/cli": "^4.2.2",
+    "concurrently": "^9.2.1",
     "jest": "^30.3.0",
-    "supertest": "^7.2.2"
+    "supertest": "^7.2.2",
+    "tailwindcss": "^4.2.2"
   },
   "jest": {
     "testEnvironment": "node",
-    "setupFilesAfterEnv": ["<rootDir>/__tests__/setup.js"],
-    "testPathIgnorePatterns": ["/node_modules/", "/__tests__/setup.js"],
+    "setupFilesAfterEnv": [
+      "<rootDir>/__tests__/setup.js"
+    ],
+    "testPathIgnorePatterns": [
+      "/node_modules/",
+      "/__tests__/setup.js"
+    ],
     "coverageDirectory": "coverage",
-    "coveragePathIgnorePatterns": ["/node_modules/", "/__tests__/"]
+    "coveragePathIgnorePatterns": [
+      "/node_modules/",
+      "/__tests__/"
+    ]
   }
 }
