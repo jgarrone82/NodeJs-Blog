@@ -16,11 +16,19 @@
   --color-accent: #f59e0b;
   --color-accent-dark: #d97706;
   --color-surface: #ffffff;
+  --color-surface-dark: #1e293b;
   --color-background: #f3f4f6;
+  --color-background-dark: #0f172a;
   --color-text: #1f2937;
+  --color-text-dark: #e5e7eb;
   --color-text-muted: #6b7280;
+  --color-text-muted-dark: #9ca3af;
   --color-border: #e5e7eb;
+  --color-border-dark: #374151;
 }
+
+/* Enable dark mode variant */
+@variant dark (&:is(.dark *));
 
 /* Base styles */
 html {
@@ -28,7 +36,7 @@ html {
 }
 
 body {
-  @apply bg-background text-text min-h-screen;
+  @apply bg-background text-text min-h-screen dark:bg-background-dark dark:text-text-dark;
 }
 
 /* Header styles */
@@ -59,7 +67,7 @@ body {
 
 /* Card styles */
 .post-card {
-  @apply bg-surface rounded-lg shadow-md overflow-hidden transition-shadow hover:shadow-lg;
+  @apply bg-surface rounded-lg shadow-md overflow-hidden transition-shadow hover:shadow-lg dark:bg-surface-dark;
 }
 
 .post-card h3 {
@@ -67,15 +75,15 @@ body {
 }
 
 .post-card h3 a {
-  @apply text-text hover:text-primary transition-colors;
+  @apply text-text hover:text-primary transition-colors dark:text-text-dark;
 }
 
 .post-card .meta {
-  @apply text-xs sm:text-sm text-text-muted px-3 sm:px-4 pb-2 border-t border-border;
+  @apply text-xs sm:text-sm text-text-muted px-3 sm:px-4 pb-2 border-t border-border dark:text-text-muted-dark dark:border-border-dark;
 }
 
 .post-card .excerpt {
-  @apply px-3 sm:px-4 pb-4 text-sm sm:text-base text-text;
+  @apply px-3 sm:px-4 pb-4 text-sm sm:text-base text-text dark:text-text-dark;
 }
 
 /* Form styles */
@@ -84,18 +92,18 @@ body {
 }
 
 .form-field label {
-  @apply block text-sm font-medium text-text mb-1;
+  @apply block text-sm font-medium text-text mb-1 dark:text-text-dark;
 }
 
 .form-field input[type="text"],
 .form-field input[type="email"],
 .form-field input[type="password"],
 .form-field textarea {
-  @apply w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-shadow;
+  @apply w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-shadow dark:bg-surface-dark dark:border-border-dark dark:text-text-dark;
 }
 
 .form-field input[type="file"] {
-  @apply block w-full text-sm text-text-muted file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-white hover:file:bg-primary-dark;
+  @apply block w-full text-sm text-text-muted file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-white hover:file:bg-primary-dark dark:text-text-muted-dark;
 }
 
 /* Button styles */
@@ -112,7 +120,7 @@ body {
 }
 
 .btn-outline {
-  @apply bg-transparent border-border text-text hover:bg-background;
+  @apply bg-transparent border-border text-text hover:bg-background dark:border-border-dark dark:text-text-dark dark:hover:bg-surface-dark;
 }
 
 .btn-sm {
@@ -125,20 +133,20 @@ body {
 }
 
 .data-table th {
-  @apply bg-background text-left text-xs sm:text-sm font-semibold text-text-muted px-3 sm:px-4 py-3 border-b border-border;
+  @apply bg-background text-left text-xs sm:text-sm font-semibold text-text-muted px-3 sm:px-4 py-3 border-b border-border dark:bg-surface-dark dark:text-text-muted-dark dark:border-border-dark;
 }
 
 .data-table td {
-  @apply px-3 sm:px-4 py-3 border-b border-border text-xs sm:text-sm;
+  @apply px-3 sm:px-4 py-3 border-b border-border text-xs sm:text-sm dark:border-border-dark;
 }
 
 .data-table tr:hover td {
-  @apply bg-background/50;
+  @apply bg-background/50 dark:bg-surface-dark/50;
 }
 
 /* Footer */
 .site-footer {
-  @apply bg-text text-text-muted text-center py-6 mt-12 text-sm;
+  @apply bg-text text-text-muted text-center py-6 mt-12 text-sm dark:bg-surface-dark dark:text-text-muted-dark;
 }
 
 /* Alert styles */
@@ -147,15 +155,15 @@ body {
 }
 
 .alert-info {
-  @apply bg-blue-50 text-blue-800 border border-blue-200;
+  @apply bg-blue-50 text-blue-800 border border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800;
 }
 
 .alert-success {
-  @apply bg-green-50 text-green-800 border border-green-200;
+  @apply bg-green-50 text-green-800 border border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800;
 }
 
 .alert-error {
-  @apply bg-red-50 text-red-800 border border-red-200;
+  @apply bg-red-50 text-red-800 border border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800;
 }
 
 /* Tag/vote badge */
@@ -178,7 +186,7 @@ body {
 }
 
 .pagination span {
-  @apply text-text-muted;
+  @apply text-text-muted dark:text-text-muted-dark;
 }
 
 /* Container */
@@ -197,11 +205,11 @@ body {
 }
 
 .prose h1, .prose h2, .prose h3 {
-  @apply font-bold mt-4 mb-2;
+  @apply font-bold mt-4 mb-2 dark:text-text-dark;
 }
 
 .prose p {
-  @apply mb-3;
+  @apply mb-3 dark:text-text-dark;
 }
 
 .prose a {
@@ -209,13 +217,18 @@ body {
 }
 
 .prose ul, .prose ol {
-  @apply ml-5 mb-3;
+  @apply ml-5 mb-3 dark:text-text-dark;
 }
 
 .prose blockquote {
-  @apply border-l-4 border-primary pl-4 italic text-text-muted;
+  @apply border-l-4 border-primary pl-4 italic text-text-muted dark:text-text-muted-dark;
 }
 
 .prose img {
   @apply rounded-lg max-w-full h-auto;
+}
+
+/* Dark mode toggle button */
+.dark-toggle {
+  @apply flex items-center justify-center w-10 h-10 rounded-md hover:bg-primary-dark transition-colors cursor-pointer;
 }
