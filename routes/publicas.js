@@ -25,21 +25,15 @@ function enviarCorreoBienvenida(email, nombre) {
   })
 }
 
-router.get('/', (peticion, respuesta) => {
-  pool.getConnection((err, connection) => {
-    if (err) {
-      console.error('Error de conexión:', err)
-      return respuesta.status(500).send('Error del servidor')
-    }
-
+router.get('/', async (peticion, respuesta) => {
+  try {
     let modificadorConsulta = ""
     let modificadorPagina = ""
     let pagina = 0
     const busqueda = (peticion.query.busqueda) ? peticion.query.busqueda : ""
     if (busqueda != "") {
-      const busquedaSegura = connection.escape(`%${busqueda}%`)
+      const busquedaSegura = pool.escape(`%${busqueda}%`)
       modificadorConsulta = `WHERE titulo LIKE ${busquedaSegura} OR resumen LIKE ${busquedaSegura} OR contenido LIKE ${busquedaSegura}`
-      modificadorPagina = ""
     }
     else {
       pagina = (peticion.query.pagina) ? parseInt(peticion.query.pagina) : 0
@@ -58,160 +52,126 @@ router.get('/', (peticion, respuesta) => {
       ORDER BY fecha_hora DESC
       ${modificadorPagina}
     `
-    connection.query(consulta, (error, filas, campos) => {
-      connection.release()
-      respuesta.render('index', { publicaciones: filas, busqueda: busqueda, pagina: pagina })
-    })
-  })
+    const [filas] = await pool.query(consulta)
+    respuesta.render('index', { publicaciones: filas, busqueda: busqueda, pagina: pagina })
+  } catch (error) {
+    console.error('Error en GET /:', error)
+    respuesta.status(500).send('Error del servidor')
+  }
 })
 
 router.get('/registro', (peticion, respuesta) => {
   respuesta.render('registro', { mensaje: peticion.flash('mensaje') })
 })
 
-router.post('/procesar_registro', (peticion, respuesta) => {
-  pool.getConnection(async (err, connection) => {
-    if (err) {
-      console.error('Error de conexión:', err)
-      return respuesta.status(500).send('Error del servidor')
-    }
+router.post('/procesar_registro', async (peticion, respuesta) => {
+  let connection
+  try {
+    connection = await pool.getConnection()
 
     const email = peticion.body.email.toLowerCase().trim()
     const pseudonimo = peticion.body.pseudonimo.trim()
     const contrasenaPlana = peticion.body.contrasena
 
-    try {
-      const contrasenaHasheada = await bcrypt.hash(contrasenaPlana, 10)
+    const contrasenaHasheada = await bcrypt.hash(contrasenaPlana, 10)
 
-      const consultaEmail = `SELECT * FROM autores WHERE email = ${connection.escape(email)}`
-      connection.query(consultaEmail, (error, filas, campos) => {
-        if (filas.length > 0) {
-          connection.release()
-          peticion.flash('mensaje', 'Email duplicado')
-          return respuesta.redirect('/registro')
-        }
-
-        const consultaPseudonimo = `SELECT * FROM autores WHERE pseudonimo = ${connection.escape(pseudonimo)}`
-        connection.query(consultaPseudonimo, (error, filas, campos) => {
-          if (filas.length > 0) {
-            connection.release()
-            peticion.flash('mensaje', 'Pseudonimo duplicado')
-            return respuesta.redirect('/registro')
-          }
-
-          const consulta = `
-            INSERT INTO autores (email, contrasena, pseudonimo)
-            VALUES (${connection.escape(email)}, ${connection.escape(contrasenaHasheada)}, ${connection.escape(pseudonimo)})
-          `
-          connection.query(consulta, (error, filas, campos) => {
-            if (error) {
-              connection.release()
-              peticion.flash('mensaje', 'Error al registrar usuario')
-              return respuesta.redirect('/registro')
-            }
-
-            const id = filas.insertId
-
-            if (peticion.files && peticion.files.avatar) {
-              const archivoAvatar = peticion.files.avatar
-              const nombreArchivo = `${id}${path.extname(archivoAvatar.name)}`
-              archivoAvatar.mv(`./public/avatars/${nombreArchivo}`, (error) => {
-                if (error) {
-                  connection.release()
-                  console.error('Error subiendo avatar:', error)
-                  peticion.flash('mensaje', 'Error subiendo avatar')
-                  return respuesta.redirect('/registro')
-                }
-
-                const consultaAvatar = `
-                  UPDATE autores SET avatar = ${connection.escape(nombreArchivo)}
-                  WHERE id = ${connection.escape(id)}
-                `
-                connection.query(consultaAvatar, (error, filas, campos) => {
-                  connection.release()
-                  enviarCorreoBienvenida(email, pseudonimo)
-                  peticion.flash('mensaje', 'Usuario registrado con avatar')
-                  respuesta.redirect('/registro')
-                })
-              })
-            }
-            else {
-              connection.release()
-              enviarCorreoBienvenida(email, pseudonimo)
-              peticion.flash('mensaje', 'Usuario registrado')
-              respuesta.redirect('/registro')
-            }
-          })
-        })
-      })
-    } catch (error) {
-      connection.release()
-      console.error('Error registrando usuario:', error)
-      peticion.flash('mensaje', 'Error al registrar usuario')
-      respuesta.redirect('/registro')
+    const [filasEmail] = await connection.query(
+      'SELECT * FROM autores WHERE email = ?',
+      [email]
+    )
+    if (filasEmail.length > 0) {
+      peticion.flash('mensaje', 'Email duplicado')
+      return respuesta.redirect('/registro')
     }
-  })
+
+    const [filasPseudonimo] = await connection.query(
+      'SELECT * FROM autores WHERE pseudonimo = ?',
+      [pseudonimo]
+    )
+    if (filasPseudonimo.length > 0) {
+      peticion.flash('mensaje', 'Pseudonimo duplicado')
+      return respuesta.redirect('/registro')
+    }
+
+    const [resultado] = await connection.query(
+      'INSERT INTO autores (email, contrasena, pseudonimo) VALUES (?, ?, ?)',
+      [email, contrasenaHasheada, pseudonimo]
+    )
+    const id = resultado.insertId
+
+    if (peticion.files && peticion.files.avatar) {
+      const archivoAvatar = peticion.files.avatar
+      const nombreArchivo = `${id}${path.extname(archivoAvatar.name)}`
+      await archivoAvatar.mv(`./public/avatars/${nombreArchivo}`)
+
+      await connection.query(
+        'UPDATE autores SET avatar = ? WHERE id = ?',
+        [nombreArchivo, id]
+      )
+      enviarCorreoBienvenida(email, pseudonimo)
+      peticion.flash('mensaje', 'Usuario registrado con avatar')
+    }
+    else {
+      enviarCorreoBienvenida(email, pseudonimo)
+      peticion.flash('mensaje', 'Usuario registrado')
+    }
+    respuesta.redirect('/registro')
+  } catch (error) {
+    console.error('Error registrando usuario:', error)
+    peticion.flash('mensaje', 'Error al registrar usuario')
+    respuesta.redirect('/registro')
+  } finally {
+    if (connection) connection.release()
+  }
 })
 
 router.get('/inicio', (peticion, respuesta) => {
   respuesta.render('inicio', { mensaje: peticion.flash('mensaje') })
 })
 
-router.post('/procesar_inicio', (peticion, respuesta) => {
-  pool.getConnection((err, connection) => {
-    if (err) {
-      console.error('Error de conexión:', err)
-      return respuesta.status(500).send('Error del servidor')
-    }
+router.post('/procesar_inicio', async (peticion, respuesta) => {
+  try {
+    const [filas] = await pool.query(
+      'SELECT * FROM autores WHERE email = ?',
+      [peticion.body.email]
+    )
 
-    const consulta = `SELECT * FROM autores WHERE email = ${connection.escape(peticion.body.email)}`
-    connection.query(consulta, async (error, filas, campos) => {
-      connection.release()
-
-      if (filas.length > 0) {
-        try {
-          const coincide = await bcrypt.compare(peticion.body.contrasena, filas[0].contrasena)
-          if (coincide) {
-            peticion.session.usuario = filas[0]
-            return respuesta.redirect('/admin/index')
-          }
-        } catch (e) {
-          console.error('Error verificando contraseña:', e)
-        }
+    if (filas.length > 0) {
+      const coincide = await bcrypt.compare(peticion.body.contrasena, filas[0].contrasena)
+      if (coincide) {
+        peticion.session.usuario = filas[0]
+        return respuesta.redirect('/admin/index')
       }
-      peticion.flash('mensaje', 'Datos inválidos')
-      respuesta.redirect('/inicio')
-    })
-  })
+    }
+    peticion.flash('mensaje', 'Datos inválidos')
+    respuesta.redirect('/inicio')
+  } catch (error) {
+    console.error('Error en login:', error)
+    peticion.flash('mensaje', 'Error al iniciar sesión')
+    respuesta.redirect('/inicio')
+  }
 })
 
-router.get('/publicacion/:id', (peticion, respuesta) => {
-  pool.getConnection((err, connection) => {
-    if (err) {
-      console.error('Error de conexión:', err)
-      return respuesta.status(500).send('Error del servidor')
+router.get('/publicacion/:id', async (peticion, respuesta) => {
+  try {
+    const [filas] = await pool.query(
+      'SELECT * FROM publicaciones WHERE id = ?',
+      [peticion.params.id]
+    )
+    if (filas.length > 0) {
+      respuesta.render('publicacion', { publicacion: filas[0] })
     }
-
-    const consulta = `SELECT * FROM publicaciones WHERE id = ${connection.escape(peticion.params.id)}`
-    connection.query(consulta, (error, filas, campos) => {
-      connection.release()
-      if (filas.length > 0) {
-        respuesta.render('publicacion', { publicacion: filas[0] })
-      }
-      else {
-        respuesta.redirect('/')
-      }
-    })
-  })
+    else {
+      respuesta.redirect('/')
+    }
+  } catch (error) {
+    console.error('Error en GET /publicacion/:id:', error)
+    respuesta.status(500).send('Error del servidor')
+  }
 })
 
-router.get('/autores', (peticion, respuesta) => {
-  pool.getConnection((err, connection) => {
-    if (err) {
-      console.error('Error de conexión:', err)
-      return respuesta.status(500).send('Error del servidor')
-    }
-
+router.get('/autores', async (peticion, respuesta) => {
+  try {
     const consulta = `
       SELECT autores.id id, pseudonimo, avatar, publicaciones.id publicacion_id, titulo
       FROM autores
@@ -219,54 +179,53 @@ router.get('/autores', (peticion, respuesta) => {
       ON autores.id = publicaciones.autor_id
       ORDER BY autores.id DESC, publicaciones.fecha_hora DESC
     `
-    connection.query(consulta, (error, filas, campos) => {
-      connection.release()
+    const [filas] = await pool.query(consulta)
 
-      autores = []
-      ultimoAutorId = undefined
-      filas.forEach(registro => {
-        if (registro.id != ultimoAutorId) {
-          ultimoAutorId = registro.id
-          autores.push({
-            id: registro.id,
-            pseudonimo: registro.pseudonimo,
-            avatar: registro.avatar,
-            publicaciones: []
-          })
-        }
-        autores[autores.length - 1].publicaciones.push({
-          id: registro.publicacion_id,
-          titulo: registro.titulo
+    const autores = []
+    let ultimoAutorId = undefined
+    filas.forEach(registro => {
+      if (registro.id != ultimoAutorId) {
+        ultimoAutorId = registro.id
+        autores.push({
+          id: registro.id,
+          pseudonimo: registro.pseudonimo,
+          avatar: registro.avatar,
+          publicaciones: []
         })
+      }
+      autores[autores.length - 1].publicaciones.push({
+        id: registro.publicacion_id,
+        titulo: registro.titulo
       })
-      respuesta.render('autores', { autores: autores })
     })
-  })
+    respuesta.render('autores', { autores: autores })
+  } catch (error) {
+    console.error('Error en GET /autores:', error)
+    respuesta.status(500).send('Error del servidor')
+  }
 })
 
-router.get('/publicacion/:id/votar', (peticion, respuesta) => {
-  pool.getConnection((err, connection) => {
-    if (err) {
-      console.error('Error de conexión:', err)
-      return respuesta.status(500).send('Error del servidor')
+router.get('/publicacion/:id/votar', async (peticion, respuesta) => {
+  try {
+    const [filas] = await pool.query(
+      'SELECT * FROM publicaciones WHERE id = ?',
+      [peticion.params.id]
+    )
+    if (filas.length > 0) {
+      await pool.query(
+        'UPDATE publicaciones SET votos = votos + 1 WHERE id = ?',
+        [peticion.params.id]
+      )
+      respuesta.redirect(`/publicacion/${peticion.params.id}`)
     }
-
-    const consulta = `SELECT * FROM publicaciones WHERE id = ${connection.escape(peticion.params.id)}`
-    connection.query(consulta, (error, filas, campos) => {
-      if (filas.length > 0) {
-        const consultaVoto = `UPDATE publicaciones SET votos = votos + 1 WHERE id = ${connection.escape(peticion.params.id)}`
-        connection.query(consultaVoto, (error, filas, campos) => {
-          connection.release()
-          respuesta.redirect(`/publicacion/${peticion.params.id}`)
-        })
-      }
-      else {
-        connection.release()
-        peticion.flash('mensaje', 'Publicación inválida')
-        respuesta.redirect('/')
-      }
-    })
-  })
+    else {
+      peticion.flash('mensaje', 'Publicación inválida')
+      respuesta.redirect('/')
+    }
+  } catch (error) {
+    console.error('Error en GET /publicacion/:id/votar:', error)
+    respuesta.status(500).send('Error del servidor')
+  }
 })
 
 module.exports = router
