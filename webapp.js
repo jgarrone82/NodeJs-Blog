@@ -21,7 +21,29 @@ aplicacion.use(express.urlencoded({ extended: true }))
 aplicacion.set("view engine", "ejs")
 aplicacion.use(session({ secret: process.env.SESSION_SECRET, resave: true, saveUninitialized: true }));
 aplicacion.use(flash())
-aplicacion.use(express.static('public'))
+
+// Static assets with cache headers
+const oneYear = 365 * 24 * 60 * 60 * 1000
+aplicacion.use('/javascripts', express.static('public/javascripts', {
+  maxAge: oneYear,
+  immutable: true
+}))
+aplicacion.use('/stylesheets', express.static('public/stylesheets', {
+  maxAge: oneYear,
+  immutable: true
+}))
+aplicacion.use('/images', express.static('public/images', {
+  maxAge: oneYear,
+  immutable: true
+}))
+aplicacion.use('/avatars', express.static('public/avatars', {
+  maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days (may change)
+}))
+// Fallback for any other static files
+aplicacion.use(express.static('public', {
+  maxAge: 24 * 60 * 60 * 1000 // 1 day
+}))
+
 aplicacion.use(fileUpload())
 
 aplicacion.use(rutasMiddleware)
