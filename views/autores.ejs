@@ -15,10 +15,10 @@
 
   <main class="page-container">
     <img src="images/fondo.jpg" class="hero-image" alt="Blog de Viajes">
-    <h1 class="text-3xl font-bold mb-2">Autores</h1>
-    <p class="text-text-muted mb-6">Conoce a nuestros autores:</p>
+    <h1 class="text-2xl sm:text-3xl font-bold mb-2">Autores</h1>
+    <p class="text-text-muted mb-6 text-sm sm:text-base">Conoce a nuestros autores:</p>
 
-    <div class="space-y-6">
+    <div class="space-y-4 sm:space-y-6">
       <% autores.forEach(autor => { %>
       <article class="post-card">
         <h3 class="flex items-center gap-2">
@@ -29,7 +29,7 @@
           <% } %>
           <%=autor.pseudonimo%>
         </h3>
-        <ul class="px-4 pb-4 space-y-1">
+        <ul class="px-3 sm:px-4 pb-4 space-y-1 text-sm sm:text-base">
           <% autor.publicaciones.forEach(publicacion => { %>
             <li>
               <a href="/publicacion/<%=publicacion.id%>" class="text-primary hover:text-primary-dark transition-colors">

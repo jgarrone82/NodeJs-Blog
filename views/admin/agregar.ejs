@@ -14,8 +14,8 @@
   <%- include('../partials/encabezado_privado') %>
 
   <main class="page-container">
-    <h1 class="text-3xl font-bold mb-2">Admin - Agregar publicación</h1>
-    <hr class="border-border mb-6">
+    <h1 class="text-2xl sm:text-3xl font-bold mb-2">Admin - Agregar publicación</h1>
+    <hr class="border-border mb-4 sm:mb-6">
 
     <% if (mensaje && mensaje.length > 0) { %>
     <div class="alert alert-info">
@@ -25,7 +25,7 @@
     <% } %>
 
     <form action="/admin/procesar_agregar" method="POST" class="max-w-2xl">
-      <h2 class="text-lg font-semibold mb-4 pb-3 border-b border-border">Datos de publicación</h2>
+      <h2 class="text-base sm:text-lg font-semibold mb-4 pb-3 border-b border-border">Datos de publicación</h2>
       
       <div class="form-field">
         <label for="titulo">Título</label>

@@ -15,8 +15,8 @@
 
   <main class="page-container">
     <div class="max-w-md mx-auto">
-      <h1 class="text-3xl font-bold mb-2">Registro</h1>
-      <p class="text-text-muted mb-6">Ingresa tus datos para ser un nuevo autor</p>
+      <h1 class="text-2xl sm:text-3xl font-bold mb-2">Registro</h1>
+      <p class="text-text-muted mb-6 text-sm sm:text-base">Ingresa tus datos para ser un nuevo autor</p>
 
       <% if (mensaje && mensaje.length > 0) { %>
       <div class="alert alert-info">
@@ -25,8 +25,8 @@
       </div>
       <% } %>
 
-      <form action="/procesar_registro" method="POST" encType="multipart/form-data" class="bg-surface p-6 rounded-lg shadow-md">
-        <h2 class="text-lg font-semibold mb-4 pb-3 border-b border-border">Nuevo autor</h2>
+      <form action="/procesar_registro" method="POST" encType="multipart/form-data" class="bg-surface p-4 sm:p-6 rounded-lg shadow-md">
+        <h2 class="text-base sm:text-lg font-semibold mb-4 pb-3 border-b border-border">Nuevo autor</h2>
         
         <div class="form-field">
           <label for="email">Email</label>

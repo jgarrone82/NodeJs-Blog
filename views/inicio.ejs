@@ -15,8 +15,8 @@
 
   <main class="page-container">
     <div class="max-w-md mx-auto">
-      <h1 class="text-3xl font-bold mb-2">Inicio de Sesión</h1>
-      <p class="text-text-muted mb-6">Ingresa tus credenciales para ingresar</p>
+      <h1 class="text-2xl sm:text-3xl font-bold mb-2">Inicio de Sesión</h1>
+      <p class="text-text-muted mb-6 text-sm sm:text-base">Ingresa tus credenciales para ingresar</p>
 
       <% if (mensaje && mensaje.length > 0) { %>
       <div class="alert alert-info">
@@ -25,8 +25,8 @@
       </div>
       <% } %>
 
-      <form action="/procesar_inicio" method="POST" class="bg-surface p-6 rounded-lg shadow-md">
-        <h2 class="text-lg font-semibold mb-4 pb-3 border-b border-border">Datos para entrar</h2>
+      <form action="/procesar_inicio" method="POST" class="bg-surface p-4 sm:p-6 rounded-lg shadow-md">
+        <h2 class="text-base sm:text-lg font-semibold mb-4 pb-3 border-b border-border">Datos para entrar</h2>
         
         <div class="form-field">
           <label for="email">Email</label>

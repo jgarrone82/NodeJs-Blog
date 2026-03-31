@@ -14,6 +14,10 @@
 }
 
 /* Base styles */
+html {
+  @apply text-[14px] sm:text-[15px] md:text-[16px];
+}
+
 body {
   @apply bg-background text-text min-h-screen;
 }
@@ -24,11 +28,24 @@ body {
 }
 
 .site-header a.logo {
-  @apply text-xl font-bold px-4 py-3 inline-block hover:text-accent transition-colors;
+  @apply text-lg sm:text-xl font-bold px-3 sm:px-4 py-3 inline-block hover:text-accent transition-colors;
 }
 
 .site-header nav a {
-  @apply px-4 py-3 inline-block text-sm font-medium hover:bg-primary-dark transition-colors;
+  @apply px-3 sm:px-4 py-3 inline-block text-sm font-medium hover:bg-primary-dark transition-colors;
+}
+
+/* Mobile menu toggle */
+.menu-toggle {
+  @apply md:hidden flex items-center justify-center w-10 h-10 rounded-md hover:bg-primary-dark transition-colors cursor-pointer;
+}
+
+.mobile-nav {
+  @apply hidden md:flex;
+}
+
+.mobile-nav.open {
+  @apply flex flex-col bg-primary-dark md:flex-row;
 }
 
 /* Card styles */
@@ -37,7 +54,7 @@ body {
 }
 
 .post-card h3 {
-  @apply text-lg font-semibold p-4 pb-2;
+  @apply text-base sm:text-lg font-semibold p-3 sm:p-4 pb-2;
 }
 
 .post-card h3 a {
@@ -45,11 +62,11 @@ body {
 }
 
 .post-card .meta {
-  @apply text-sm text-text-muted px-4 pb-2 border-t border-border;
+  @apply text-xs sm:text-sm text-text-muted px-3 sm:px-4 pb-2 border-t border-border;
 }
 
 .post-card .excerpt {
-  @apply px-4 pb-4 text-text;
+  @apply px-3 sm:px-4 pb-4 text-sm sm:text-base text-text;
 }
 
 /* Form styles */
@@ -74,7 +91,7 @@ body {
 
 /* Button styles */
 .btn {
-  @apply inline-flex items-center px-4 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer border border-transparent;
+  @apply inline-flex items-center justify-center px-4 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer border border-transparent;
 }
 
 .btn-primary {
@@ -99,11 +116,11 @@ body {
 }
 
 .data-table th {
-  @apply bg-background text-left text-sm font-semibold text-text-muted px-4 py-3 border-b border-border;
+  @apply bg-background text-left text-xs sm:text-sm font-semibold text-text-muted px-3 sm:px-4 py-3 border-b border-border;
 }
 
 .data-table td {
-  @apply px-4 py-3 border-b border-border text-sm;
+  @apply px-3 sm:px-4 py-3 border-b border-border text-xs sm:text-sm;
 }
 
 .data-table tr:hover td {
@@ -112,12 +129,12 @@ body {
 
 /* Footer */
 .site-footer {
-  @apply bg-text text-text-muted text-center py-6 mt-12;
+  @apply bg-text text-text-muted text-center py-6 mt-12 text-sm;
 }
 
 /* Alert styles */
 .alert {
-  @apply p-4 rounded-md mb-4;
+  @apply p-3 sm:p-4 rounded-md mb-4 text-sm;
 }
 
 .alert-info {
@@ -144,7 +161,7 @@ body {
 
 /* Pagination */
 .pagination {
-  @apply flex items-center justify-center gap-4 py-6 text-sm;
+  @apply flex items-center justify-center gap-3 sm:gap-4 py-6 text-sm;
 }
 
 .pagination a {
@@ -157,10 +174,39 @@ body {
 
 /* Container */
 .page-container {
-  @apply max-w-4xl mx-auto px-4 py-6;
+  @apply max-w-4xl mx-auto px-3 sm:px-4 py-4 sm:py-6;
 }
 
 /* Hero image */
 .hero-image {
-  @apply w-full rounded-lg mb-6 object-cover;
+  @apply w-full rounded-lg mb-4 sm:mb-6 object-cover;
+}
+
+/* Prose for post content */
+.prose {
+  @apply text-sm sm:text-base leading-relaxed;
+}
+
+.prose h1, .prose h2, .prose h3 {
+  @apply font-bold mt-4 mb-2;
+}
+
+.prose p {
+  @apply mb-3;
+}
+
+.prose a {
+  @apply text-primary hover:underline;
+}
+
+.prose ul, .prose ol {
+  @apply ml-5 mb-3;
+}
+
+.prose blockquote {
+  @apply border-l-4 border-primary pl-4 italic text-text-muted;
+}
+
+.prose img {
+  @apply rounded-lg max-w-full h-auto;
 }
