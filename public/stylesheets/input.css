@@ -1,5 +1,14 @@
 @import "tailwindcss";
 
+/* Animations */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
 /* Custom theme - Blog de Viajes */
 @theme {
   --color-primary: #2563eb;

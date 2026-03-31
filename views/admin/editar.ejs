@@ -7,6 +7,8 @@
   <meta http-equiv="X-UA-Compatible" content="ie=edge">
   <title>Blog Viajes</title>
   <link rel="stylesheet" href="/stylesheets/styles.css">
+  <link rel="shortcut icon" type="image/png" href="images/favicon.png"/>
+  <script defer src="/javascripts/alpine.min.js"></script>
   <script src="/javascripts/ckeditor5-build-classic/ckeditor.js"></script>
 </head>
 
@@ -14,39 +16,78 @@
   <%- include('../partials/encabezado_privado') %>
 
   <main class="page-container">
-    <h1 class="text-2xl sm:text-3xl font-bold mb-2">Admin - Editar publicación</h1>
-    <hr class="border-border mb-4 sm:mb-6">
+    <div x-data="postForm()">
+      <h1 class="text-2xl sm:text-3xl font-bold mb-2">Admin - Editar publicación</h1>
+      <hr class="border-border mb-4 sm:mb-6">
 
-    <% if (mensaje && mensaje.length > 0) { %>
-    <div class="alert alert-info">
-      <svg class="w-5 h-5 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-      <%=mensaje%>
+      <!-- Toast notification -->
+      <div x-show="toast.show" x-transition class="fixed top-16 right-4 z-50 max-w-sm">
+        <div :class="toast.type === 'error' ? 'alert-error' : 'alert-success'" class="alert shadow-lg">
+          <span x-text="toast.message"></span>
+        </div>
+      </div>
+
+      <% if (mensaje && mensaje.length > 0) { %>
+      <div class="alert alert-info">
+        <svg class="w-5 h-5 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        <%=mensaje%>
+      </div>
+      <% } %>
+
+      <form action="/admin/procesar_editar" method="POST" class="max-w-2xl" @submit="onSubmit">
+        <input type="hidden" name="id" value="<%=publicacion.id%>">
+        <h2 class="text-base sm:text-lg font-semibold mb-4 pb-3 border-b border-border">Datos de publicación</h2>
+        
+        <div class="form-field">
+          <label for="titulo">Título</label>
+          <input type="text" id="titulo" name="titulo" x-model="titulo" :class="errors.titulo ? 'border-red-500 focus:ring-red-500' : ''" required value="<%=publicacion.titulo%>" />
+          <p x-show="errors.titulo" x-text="errors.titulo" class="text-red-600 text-xs mt-1"></p>
+        </div>
+        
+        <div class="form-field">
+          <label for="resumen">Resumen</label>
+          <textarea id="resumen" name="resumen" rows="3" x-model="resumen" :class="errors.resumen ? 'border-red-500 focus:ring-red-500' : ''"><%=publicacion.resumen%></textarea>
+          <p x-show="errors.resumen" x-text="errors.resumen" class="text-red-600 text-xs mt-1"></p>
+        </div>
+        
+        <div class="form-field">
+          <label for="contenido">Contenido</label>
+          <textarea id="contenido" name="contenido"><%=publicacion.contenido%></textarea>
+        </div>
+
+        <button type="submit" class="btn btn-primary" :disabled="loading">
+          <svg x-show="loading" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+          <span x-text="loading ? 'Guardando...' : 'Continuar'"></span>
+        </button>
+      </form>
     </div>
-    <% } %>
-
-    <form action="/admin/procesar_editar" method="POST" class="max-w-2xl">
-      <input type="hidden" name="id" value="<%=publicacion.id%>">
-      <h2 class="text-base sm:text-lg font-semibold mb-4 pb-3 border-b border-border">Datos de publicación</h2>
-      
-      <div class="form-field">
-        <label for="titulo">Título</label>
-        <input type="text" id="titulo" name="titulo" required value="<%=publicacion.titulo%>" />
-      </div>
-      
-      <div class="form-field">
-        <label for="resumen">Resumen</label>
-        <textarea id="resumen" name="resumen" rows="3"><%=publicacion.resumen%></textarea>
-      </div>
-      
-      <div class="form-field">
-        <label for="contenido">Contenido</label>
-        <textarea id="contenido" name="contenido"><%=publicacion.contenido%></textarea>
-      </div>
-
-      <button type="submit" class="btn btn-primary">Continuar</button>
-    </form>
 
     <script>
+      function postForm() {
+        return {
+          titulo: '<%- JSON.stringify(publicacion.titulo).slice(1, -1) %>',
+          resumen: '<%- JSON.stringify(publicacion.resumen).slice(1, -1) %>',
+          loading: false,
+          errors: { titulo: '', resumen: '' },
+          toast: { show: false, message: '', type: 'success' },
+          
+          onSubmit(e) {
+            if (!this.titulo.trim()) this.errors.titulo = 'El título es requerido'
+            else this.errors.titulo = ''
+            if (!this.resumen.trim()) this.errors.resumen = 'El resumen es requerido'
+            else this.errors.resumen = ''
+            
+            if (this.errors.titulo || this.errors.resumen) {
+              e.preventDefault()
+              this.toast = { show: true, message: 'Completa todos los campos requeridos', type: 'error' }
+              setTimeout(() => this.toast.show = false, 3000)
+              return
+            }
+            this.loading = true
+          }
+        }
+      }
+
       ClassicEditor
         .create(document.querySelector('#contenido'), {
           toolbar: ['heading', '|', 'bold', 'italic', 'link', 'bulletedList', 'numberedList', 'blockQuote'],

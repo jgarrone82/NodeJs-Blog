@@ -8,15 +8,23 @@
   <title>Blog Viajes</title>
   <link rel="stylesheet" href="/stylesheets/styles.css">
   <link rel="shortcut icon" type="image/png" href="images/favicon.png"/>
+  <script defer src="/javascripts/alpine.min.js"></script>
 </head>
 
 <body>
   <%- include('./partials/encabezado_publico') %>
 
   <main class="page-container">
-    <div class="max-w-md mx-auto">
+    <div class="max-w-md mx-auto" x-data="loginForm()">
       <h1 class="text-2xl sm:text-3xl font-bold mb-2">Inicio de Sesión</h1>
       <p class="text-text-muted mb-6 text-sm sm:text-base">Ingresa tus credenciales para ingresar</p>
+
+      <!-- Toast notification -->
+      <div x-show="toast.show" x-transition class="fixed top-16 right-4 z-50 max-w-sm">
+        <div :class="toast.type === 'error' ? 'alert-error' : 'alert-success'" class="alert shadow-lg">
+          <span x-text="toast.message"></span>
+        </div>
+      </div>
 
       <% if (mensaje && mensaje.length > 0) { %>
       <div class="alert alert-info">
@@ -25,26 +33,64 @@
       </div>
       <% } %>
 
-      <form action="/procesar_inicio" method="POST" class="bg-surface p-4 sm:p-6 rounded-lg shadow-md">
+      <form action="/procesar_inicio" method="POST" class="bg-surface p-4 sm:p-6 rounded-lg shadow-md" @submit="onSubmit">
         <h2 class="text-base sm:text-lg font-semibold mb-4 pb-3 border-b border-border">Datos para entrar</h2>
         
         <div class="form-field">
           <label for="email">Email</label>
-          <input type="email" id="email" name="email" required />
+          <input type="email" id="email" name="email" x-model="email" @blur="validateEmail" :class="errors.email ? 'border-red-500 focus:ring-red-500' : ''" required />
+          <p x-show="errors.email" x-text="errors.email" class="text-red-600 text-xs mt-1"></p>
         </div>
         
         <div class="form-field">
           <label for="contrasena">Contraseña</label>
-          <input type="password" id="contrasena" name="contrasena" required />
+          <input type="password" id="contrasena" name="contrasena" x-model="contrasena" :class="errors.contrasena ? 'border-red-500 focus:ring-red-500' : ''" required />
+          <p x-show="errors.contrasena" x-text="errors.contrasena" class="text-red-600 text-xs mt-1"></p>
         </div>
         
-        <button type="submit" class="btn btn-primary w-full">Continuar</button>
+        <button type="submit" class="btn btn-primary w-full" :disabled="loading">
+          <svg x-show="loading" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+          <span x-text="loading ? 'Ingresando...' : 'Continuar'"></span>
+        </button>
       </form>
     </div>
   </main>
 
   <%- include('./partials/pie') %>
   <script src="/javascripts/script.js"></script>
+  <script>
+    function loginForm() {
+      return {
+        email: '',
+        contrasena: '',
+        loading: false,
+        errors: { email: '', contrasena: '' },
+        toast: { show: false, message: '', type: 'success' },
+        
+        validateEmail() {
+          if (this.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.email)) {
+            this.errors.email = 'Ingresa un email válido'
+          } else {
+            this.errors.email = ''
+          }
+        },
+        
+        onSubmit(e) {
+          this.validateEmail()
+          if (!this.contrasena.trim()) this.errors.contrasena = 'La contraseña es requerida'
+          else this.errors.contrasena = ''
+          
+          if (this.errors.email || this.errors.contrasena) {
+            e.preventDefault()
+            this.toast = { show: true, message: 'Corrige los errores del formulario', type: 'error' }
+            setTimeout(() => this.toast.show = false, 3000)
+            return
+          }
+          this.loading = true
+        }
+      }
+    }
+  </script>
 </body>
 
 </html>
