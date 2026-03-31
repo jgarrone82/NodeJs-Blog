@@ -5,6 +5,7 @@ const path = require('path')
 const nodemailer = require('nodemailer')
 const pool = require('../db')
 const { authLimiter } = require('./rateLimiter')
+const { validateRegister, validateLogin, validateIdParam } = require('../validation/middleware')
 
 const transporter = nodemailer.createTransport({
   service: 'gmail',
@@ -65,7 +66,7 @@ router.get('/registro', (peticion, respuesta) => {
   respuesta.render('registro', { mensaje: peticion.flash('mensaje') })
 })
 
-router.post('/procesar_registro', authLimiter, async (peticion, respuesta) => {
+router.post('/procesar_registro', authLimiter, validateRegister, async (peticion, respuesta) => {
   let connection
   try {
     connection = await pool.getConnection()
@@ -130,7 +131,7 @@ router.get('/inicio', (peticion, respuesta) => {
   respuesta.render('inicio', { mensaje: peticion.flash('mensaje') })
 })
 
-router.post('/procesar_inicio', authLimiter, async (peticion, respuesta) => {
+router.post('/procesar_inicio', authLimiter, validateLogin, async (peticion, respuesta) => {
   try {
     const [filas] = await pool.query(
       'SELECT * FROM autores WHERE email = ?',
@@ -153,7 +154,7 @@ router.post('/procesar_inicio', authLimiter, async (peticion, respuesta) => {
   }
 })
 
-router.get('/publicacion/:id', async (peticion, respuesta) => {
+router.get('/publicacion/:id', validateIdParam, async (peticion, respuesta) => {
   try {
     const [filas] = await pool.query(
       'SELECT * FROM publicaciones WHERE id = ?',
@@ -206,7 +207,7 @@ router.get('/autores', async (peticion, respuesta) => {
   }
 })
 
-router.get('/publicacion/:id/votar', async (peticion, respuesta) => {
+router.get('/publicacion/:id/votar', validateIdParam, async (peticion, respuesta) => {
   try {
     const [filas] = await pool.query(
       'SELECT * FROM publicaciones WHERE id = ?',

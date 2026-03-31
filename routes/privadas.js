@@ -2,6 +2,7 @@ const express = require('express')
 const router = express.Router()
 const pool = require('../db')
 const { postLimiter } = require('./rateLimiter')
+const { validateCreatePost, validateEditPost, validateDeletePost, validateIdParam } = require('../validation/middleware')
 
 router.get('/admin/index', async (peticion, respuesta) => {
   try {
@@ -25,7 +26,7 @@ router.get('/admin/agregar', (peticion, respuesta) => {
   respuesta.render('admin/agregar', { mensaje: peticion.flash('mensaje'), usuario: peticion.session.usuario })
 })
 
-router.post('/admin/procesar_agregar', postLimiter, async (peticion, respuesta) => {
+router.post('/admin/procesar_agregar', postLimiter, validateCreatePost, async (peticion, respuesta) => {
   try {
     const date = new Date()
     const fecha = `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`
@@ -42,7 +43,7 @@ router.post('/admin/procesar_agregar', postLimiter, async (peticion, respuesta) 
   }
 })
 
-router.get('/admin/editar/:id', async (peticion, respuesta) => {
+router.get('/admin/editar/:id', validateIdParam, async (peticion, respuesta) => {
   try {
     const [filas] = await pool.query(
       'SELECT * FROM publicaciones WHERE id = ? AND autor_id = ?',
@@ -61,7 +62,7 @@ router.get('/admin/editar/:id', async (peticion, respuesta) => {
   }
 })
 
-router.post('/admin/procesar_editar', postLimiter, async (peticion, respuesta) => {
+router.post('/admin/procesar_editar', postLimiter, validateEditPost, async (peticion, respuesta) => {
   try {
     const [resultado] = await pool.query(
       'UPDATE publicaciones SET titulo = ?, resumen = ?, contenido = ? WHERE id = ? AND autor_id = ?',
@@ -81,7 +82,7 @@ router.post('/admin/procesar_editar', postLimiter, async (peticion, respuesta) =
   }
 })
 
-router.post('/admin/procesar_eliminar', postLimiter, async (peticion, respuesta) => {
+router.post('/admin/procesar_eliminar', postLimiter, validateDeletePost, async (peticion, respuesta) => {
   try {
     const [resultado] = await pool.query(
       'DELETE FROM publicaciones WHERE id = ? AND autor_id = ?',
