@@ -20,6 +20,14 @@ const envSchema = Joi.object({
     'any.required': 'SESSION_SECRET is required'
   }),
 
+  // JWT (optional — falls back to SESSION_SECRET)
+  JWT_SECRET: Joi.string().default(Joi.ref('SESSION_SECRET')).messages({
+    'string.base': 'JWT_SECRET must be a string'
+  }),
+  JWT_EXPIRES_IN: Joi.string().default('1h').messages({
+    'string.base': 'JWT_EXPIRES_IN must be a string'
+  }),
+
   // Email (optional — non-critical feature)
   GMAIL_USER: Joi.string().email().allow('').default('').messages({
     'string.email': 'GMAIL_USER must be a valid email'
@@ -64,6 +72,10 @@ function loadConfig() {
     },
     session: {
       secret: env.SESSION_SECRET
+    },
+    jwt: {
+      secret: env.JWT_SECRET,
+      expiresIn: env.JWT_EXPIRES_IN
     },
     email: {
       user: env.GMAIL_USER || null,

@@ -23,7 +23,8 @@ const mockPrisma = {
     findMany: jest.fn(),
     create: jest.fn(),
     update: jest.fn(),
-    delete: jest.fn()
+    delete: jest.fn(),
+    count: jest.fn()
   },
   $disconnect: jest.fn()
 }
@@ -43,7 +44,8 @@ jest.mock('@prisma/client', () => {
       findMany: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
-      delete: jest.fn()
+      delete: jest.fn(),
+      count: jest.fn()
     },
     $disconnect: jest.fn()
   }
@@ -61,6 +63,24 @@ jest.mock('../routes/rateLimiter', () => ({
   authLimiter: (req, res, next) => next(),
   apiLimiter: (req, res, next) => next(),
   postLimiter: (req, res, next) => next()
+}))
+
+// Mock JWT auth middleware
+jest.mock('../src/middleware/auth.middleware', () => ({
+  authenticateJWT: (req, res, next) => {
+    const authHeader = req.headers.authorization
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      req.user = { id: 1, email: 'test@test.com', pseudonimo: 'testuser' }
+      next()
+    } else {
+      // Simulate AuthenticationError
+      const error = new Error('Token de acceso requerido')
+      error.statusCode = 401
+      error.isOperational = true
+      next(error)
+    }
+  },
+  generateToken: () => 'mock-jwt-token'
 }))
 
 // Reset mocks before each test

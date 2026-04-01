@@ -1,10 +1,11 @@
 const express = require('express')
 const router = express.Router()
 const { apiLimiter, authLimiter } = require('./rateLimiter')
-const { validateApiAuth, validateApiCreatePost, validateApiCreateAuthor, validateIdParam } = require('../validation/middleware')
+const { validateApiAuth, validateApiCreatePost, validateApiCreateAuthor, validateIdParam, validateEditPost, validateLogin } = require('../validation/middleware')
 const asyncHandler = require('../src/utils/async-handler')
 const { PostService, AuthService, AuthorService } = require('../src/services')
-const { NotFoundError, AuthenticationError, ValidationError } = require('../src/errors')
+const { NotFoundError, AuthenticationError, ValidationError, AuthorizationError } = require('../src/errors')
+const { authenticateJWT, generateToken } = require('../src/middleware/auth.middleware')
 const prisma = require('../db')
 
 // Initialize services
@@ -15,59 +16,170 @@ const authorService = new AuthorService()
 // Apply rate limiting to all API routes
 router.use('/api/v1/', apiLimiter)
 
-// GET /api/v1/publicaciones/:id — Get single post
+/**
+ * @swagger
+ * /api/v1/auth/login:
+ *   post:
+ *     summary: Authenticate and get JWT token
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [email, contrasena]
+ *             properties:
+ *               email: { type: string, format: email }
+ *               contrasena: { type: string }
+ *     responses:
+ *       200:
+ *         description: JWT token
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     token: { type: string }
+ *                     expiresIn: { type: string }
+ *       401:
+ *         description: Invalid credentials
+ */
+router.post('/api/v1/auth/login', authLimiter, validateLogin, asyncHandler(async (peticion, respuesta) => {
+  const usuario = await authService.login(peticion.body.email, peticion.body.contrasena)
+
+  if (!usuario) {
+    throw new AuthenticationError('Credenciales inválidas')
+  }
+
+  const token = generateToken(usuario)
+
+  respuesta.json({
+    data: {
+      token,
+      expiresIn: '1h',
+      user: {
+        id: usuario.id,
+        email: usuario.email,
+        pseudonimo: usuario.pseudonimo
+      }
+    }
+  })
+}))
+
+/**
+ * @swagger
+ * /api/v1/publicaciones/:
+ *   get:
+ *     summary: List posts with pagination, search, and sorting
+ *     tags: [Publicaciones]
+ *     parameters:
+ *       - in: query
+ *         name: busqueda
+ *         schema: { type: string }
+ *       - in: query
+ *         name: pagina
+ *         schema: { type: integer, default: 0 }
+ *       - in: query
+ *         name: limite
+ *         schema: { type: integer, default: 10 }
+ *       - in: query
+ *         name: ordenar
+ *         schema: { type: string, enum: [fecha, votos, titulo] }
+ *       - in: query
+ *         name: direccion
+ *         schema: { type: string, enum: [asc, desc], default: desc }
+ *     responses:
+ *       200:
+ *         description: Paginated list of posts
+ */
+router.get('/api/v1/publicaciones/', asyncHandler(async (peticion, respuesta) => {
+  const busqueda = peticion.query.busqueda || ''
+  const pagina = parseInt(peticion.query.pagina) || 0
+  const limite = Math.min(parseInt(peticion.query.limite) || 10, 100) // Max 100
+  const ordenar = peticion.query.ordenar || 'fecha'
+  const direccion = peticion.query.direccion === 'asc' ? 'asc' : 'desc'
+
+  const publicaciones = await postService.list({ busqueda, pagina, limit: limite, ordenar, direccion })
+
+  // Get total count for pagination metadata
+  const whereClause = busqueda
+    ? {
+        OR: [
+          { titulo: { contains: busqueda } },
+          { resumen: { contains: busqueda } },
+          { contenido: { contains: busqueda } }
+        ]
+      }
+    : {}
+
+  const total = await prisma.publicacion.count({ where: whereClause })
+
+  respuesta.json({
+    data: publicaciones,
+    meta: {
+      pagina,
+      limite,
+      total,
+      paginas: Math.ceil(total / limite)
+    }
+  })
+}))
+
+/**
+ * @swagger
+ * /api/v1/publicaciones/{id}:
+ *   get:
+ *     summary: Get a single post by ID
+ *     tags: [Publicaciones]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: integer }
+ *     responses:
+ *       200: { description: Post found }
+ *       404: { description: Post not found }
+ */
 router.get('/api/v1/publicaciones/:id', validateIdParam, asyncHandler(async (peticion, respuesta) => {
   const publicacion = await postService.getById(peticion.params.id)
-  respuesta.json({ data: [publicacion] })
+  respuesta.json({ data: publicacion })
 }))
 
-// GET /api/v1/autores/ — List all authors
-router.get('/api/v1/autores/', asyncHandler(async (peticion, respuesta) => {
-  const autores = await authorService.list()
-
-  if (autores.length > 0) {
-    respuesta.json({ data: autores })
-  } else {
-    throw new NotFoundError('Autores no encontrados')
-  }
-}))
-
-// GET /api/v1/autores/:id — Get author with publications
-router.get('/api/v1/autores/:id', validateIdParam, asyncHandler(async (peticion, respuesta) => {
-  const result = await authorService.getByIdWithPublications(peticion.params.id)
-
-  if (!result) {
-    throw new NotFoundError('Autor no encontrado')
-  }
-
-  if (result.publications) {
-    respuesta.json({ data: [result.author], publicaciones: result.publications })
-  } else {
-    respuesta.json({ data: [result.author] })
-  }
-}))
-
-// POST /api/v1/publicaciones/ — Create post (with auth via query params)
-router.post('/api/v1/publicaciones/', authLimiter, validateApiAuth, validateApiCreatePost, asyncHandler(async (peticion, respuesta) => {
-  const email = peticion.query.email || ''
-  const contrasena = peticion.query.contrasena || ''
-
-  if (!email || !contrasena) {
-    throw new ValidationError('Email y contraseña son requeridos')
-  }
-
-  const usuario = await authService.login(email, contrasena)
-  if (!usuario) {
-    throw new AuthenticationError('Combinación de email y contraseña inválida')
-  }
-
+/**
+ * @swagger
+ * /api/v1/publicaciones/:
+ *   post:
+ *     summary: Create a new post (requires JWT auth)
+ *     tags: [Publicaciones]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [titulo, resumen, contenido]
+ *             properties:
+ *               titulo: { type: string, maxLength: 200 }
+ *               resumen: { type: string, maxLength: 500 }
+ *               contenido: { type: string, maxLength: 10000 }
+ *     responses:
+ *       201: { description: Post created }
+ *       401: { description: Unauthorized }
+ */
+router.post('/api/v1/publicaciones/', authLimiter, authenticateJWT, validateApiCreatePost, asyncHandler(async (peticion, respuesta) => {
   const { titulo, resumen, contenido } = peticion.body
 
   const nuevoId = await postService.create({
     titulo,
     resumen,
     contenido,
-    autorId: usuario.id
+    autorId: peticion.user.id
   })
 
   const nuevaPub = await prisma.publicacion.findUnique({
@@ -75,76 +187,170 @@ router.post('/api/v1/publicaciones/', authLimiter, validateApiAuth, validateApiC
     include: { autor: true }
   })
 
-  if (nuevaPub) {
-    respuesta.json({ data: [nuevaPub] })
-  } else {
-    throw new Error('Error al crear publicación')
-  }
+  respuesta.status(201).json({ data: nuevaPub })
 }))
 
-// DELETE /api/v1/publicaciones/:id — Delete post (with auth via query params)
-router.delete('/api/v1/publicaciones/:id', authLimiter, validateIdParam, asyncHandler(async (peticion, respuesta) => {
-  const email = peticion.query.email || ''
-  const contrasena = peticion.query.contrasena || ''
+/**
+ * @swagger
+ * /api/v1/publicaciones/{id}:
+ *   put:
+ *     summary: Update a post (requires JWT auth, author only)
+ *     tags: [Publicaciones]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: integer }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [titulo, resumen, contenido]
+ *             properties:
+ *               titulo: { type: string }
+ *               resumen: { type: string }
+ *               contenido: { type: string }
+ *     responses:
+ *       200: { description: Post updated }
+ *       403: { description: Not the author }
+ *       404: { description: Post not found }
+ */
+router.put('/api/v1/publicaciones/:id', authenticateJWT, validateEditPost, asyncHandler(async (peticion, respuesta) => {
+  const { titulo, resumen, contenido } = peticion.body
 
-  if (!email || !contrasena) {
-    throw new ValidationError('Email y contraseña son requeridos')
-  }
-
-  const usuario = await authService.login(email, contrasena)
-  if (!usuario) {
-    throw new AuthenticationError('Combinación de email y contraseña inválida')
-  }
-
-  const eliminado = await postService.delete({
-    id: peticion.params.id,
-    autorId: usuario.id
+  const editado = await postService.update({
+    id: parseInt(peticion.params.id),
+    titulo,
+    resumen,
+    contenido,
+    autorId: peticion.user.id
   })
 
-  if (eliminado) {
-    respuesta.status(200).send('Publicación eliminada')
-  } else {
-    throw new Error('La publicación no pertenece al autor')
+  if (!editado) {
+    throw new AuthorizationError('No tenés permiso para editar esta publicación')
   }
+
+  const publicacion = await prisma.publicacion.findUnique({
+    where: { id: parseInt(peticion.params.id) },
+    include: { autor: true }
+  })
+
+  respuesta.json({ data: publicacion })
 }))
 
-// GET /api/v1/publicaciones/ — List posts (with optional search)
-router.get('/api/v1/publicaciones/', asyncHandler(async (peticion, respuesta) => {
-  const busqueda = peticion.query.busqueda || ''
+/**
+ * @swagger
+ * /api/v1/publicaciones/{id}:
+ *   delete:
+ *     summary: Delete a post (requires JWT auth, author only)
+ *     tags: [Publicaciones]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: integer }
+ *     responses:
+ *       200: { description: Post deleted }
+ *       403: { description: Not the author }
+ */
+router.delete('/api/v1/publicaciones/:id', authenticateJWT, validateIdParam, asyncHandler(async (peticion, respuesta) => {
+  const eliminado = await postService.delete({
+    id: parseInt(peticion.params.id),
+    autorId: peticion.user.id
+  })
 
-  const publicaciones = await postService.list({ busqueda, pagina: 0, limit: 1000 })
-
-  if (publicaciones.length > 0) {
-    respuesta.json({ data: publicaciones })
-  } else {
-    throw new NotFoundError('Publicaciones no encontradas')
+  if (!eliminado) {
+    throw new AuthorizationError('No tenés permiso para eliminar esta publicación')
   }
+
+  respuesta.json({ data: { message: 'Publicación eliminada' } })
 }))
 
-// POST /api/v1/autores/ — Register author
+/**
+ * @swagger
+ * /api/v1/autores/:
+ *   get:
+ *     summary: List all authors
+ *     tags: [Autores]
+ *     responses:
+ *       200: { description: List of authors }
+ */
+router.get('/api/v1/autores/', asyncHandler(async (peticion, respuesta) => {
+  const autores = await authorService.list()
+
+  respuesta.json({
+    data: autores,
+    meta: { total: autores.length }
+  })
+}))
+
+/**
+ * @swagger
+ * /api/v1/autores/{id}:
+ *   get:
+ *     summary: Get author with their publications
+ *     tags: [Autores]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: integer }
+ *     responses:
+ *       200: { description: Author found }
+ *       404: { description: Author not found }
+ */
+router.get('/api/v1/autores/:id', validateIdParam, asyncHandler(async (peticion, respuesta) => {
+  const result = await authorService.getByIdWithPublications(peticion.params.id)
+
+  if (!result) {
+    throw new NotFoundError('Autor no encontrado')
+  }
+
+  respuesta.json({
+    data: result.author,
+    publicaciones: result.publications || []
+  })
+}))
+
+/**
+ * @swagger
+ * /api/v1/autores/:
+ *   post:
+ *     summary: Register a new author
+ *     tags: [Autores]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [email, contrasena, pseudonimo]
+ *             properties:
+ *               email: { type: string, format: email }
+ *               contrasena: { type: string, minLength: 6 }
+ *               pseudonimo: { type: string, minLength: 3, maxLength: 30 }
+ *     responses:
+ *       201: { description: Author created }
+ *       409: { description: Duplicate email or pseudonimo }
+ */
 router.post('/api/v1/autores/', authLimiter, validateApiCreateAuthor, asyncHandler(async (peticion, respuesta) => {
   const { email, pseudonimo, contrasena } = peticion.body
 
-  // Check duplicates
-  if (await authService.emailExists(email.toLowerCase().trim())) {
-    return respuesta.status(409).send('Email duplicado')
-  }
-
-  if (await authService.pseudonimoExists(pseudonimo.trim())) {
-    return respuesta.status(409).send('Pseudonimo duplicado')
-  }
-
   const resultado = await authService.register({ email, pseudonimo, contrasena })
 
-  const nuevoAutor = await prisma.autor.findUnique({
-    where: { id: resultado.id }
+  respuesta.status(201).json({
+    data: {
+      id: resultado.id,
+      email: resultado.email,
+      pseudonimo: resultado.pseudonimo
+    }
   })
-
-  if (nuevoAutor) {
-    respuesta.json({ data: [nuevoAutor] })
-  } else {
-    throw new Error('Error al crear autor')
-  }
 }))
 
 module.exports = router

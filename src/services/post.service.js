@@ -9,34 +9,36 @@ const { NotFoundError } = require('../errors')
 class PostService {
   /**
    * Get paginated list of posts with author info.
-   * If busqueda is provided, search is performed instead of pagination.
+   * Supports search, pagination, and sorting.
    */
-  async list({ busqueda = '', pagina = 0, limit = 5 } = {}) {
+  async list({ busqueda = '', pagina = 0, limit = 5, ordenar = 'fecha', direccion = 'desc' } = {}) {
     if (pagina < 0) pagina = 0
 
-    if (busqueda) {
-      // Search mode
-      const publicaciones = await prisma.publicacion.findMany({
-        where: {
+    // Map sort field to Prisma field names
+    const sortFieldMap = {
+      fecha: 'fechaHora',
+      votos: 'votos',
+      titulo: 'titulo'
+    }
+    const sortField = sortFieldMap[ordenar] || 'fechaHora'
+    const sortDir = direccion === 'asc' ? 'asc' : 'desc'
+
+    const whereClause = busqueda
+      ? {
           OR: [
             { titulo: { contains: busqueda } },
             { resumen: { contains: busqueda } },
             { contenido: { contains: busqueda } }
           ]
-        },
-        include: { autor: true },
-        orderBy: { fechaHora: 'desc' }
-      })
+        }
+      : {}
 
-      return publicaciones.map(this._toPublicFormat)
-    }
-
-    // Pagination mode
     const publicaciones = await prisma.publicacion.findMany({
-      skip: pagina * limit,
-      take: limit,
+      where: whereClause,
+      skip: busqueda ? undefined : pagina * limit,
+      take: busqueda ? undefined : limit,
       include: { autor: true },
-      orderBy: { fechaHora: 'desc' }
+      orderBy: { [sortField]: sortDir }
     })
 
     return publicaciones.map(this._toPublicFormat)
