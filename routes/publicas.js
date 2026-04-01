@@ -1,14 +1,20 @@
 const express = require('express')
 const router = express.Router()
-const bcrypt = require('bcrypt')
 const path = require('path')
 const nodemailer = require('nodemailer')
-const pool = require('../db')
 const { authLimiter } = require('./rateLimiter')
 const { validateRegister, validateLogin, validateIdParam } = require('../validation/middleware')
 const asyncHandler = require('../src/utils/async-handler')
-const { NotFoundError, ValidationError } = require('../src/errors')
+const { PostService, AuthService, AuthorService } = require('../src/services')
 
+const pool = require('../db')
+
+// Initialize services (dependency injection)
+const postService = new PostService(pool)
+const authService = new AuthService(pool)
+const authorService = new AuthorService(pool)
+
+// Email transporter (infrastructure concern — stays in route layer)
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
@@ -29,178 +35,90 @@ function enviarCorreoBienvenida(email, nombre) {
   })
 }
 
+// GET / — Homepage with posts
 router.get('/', asyncHandler(async (peticion, respuesta) => {
-  let modificadorConsulta = ""
-  let modificadorPagina = ""
-  let pagina = 0
-  const busqueda = (peticion.query.busqueda) ? peticion.query.busqueda : ""
-  if (busqueda != "") {
-    const busquedaSegura = pool.escape(`%${busqueda}%`)
-    modificadorConsulta = `WHERE titulo LIKE ${busquedaSegura} OR resumen LIKE ${busquedaSegura} OR contenido LIKE ${busquedaSegura}`
-  }
-  else {
-    pagina = (peticion.query.pagina) ? parseInt(peticion.query.pagina) : 0
-    if (pagina < 0) {
-      pagina = 0
-    }
-    modificadorPagina = `LIMIT 5 OFFSET ${pagina * 5}`
-  }
-  const consulta = `
-    SELECT
-    publicaciones.id id, titulo, resumen, fecha_hora, pseudonimo, votos, avatar
-    FROM publicaciones
-    INNER JOIN autores
-    ON publicaciones.autor_id = autores.id
-    ${modificadorConsulta}
-    ORDER BY fecha_hora DESC
-    ${modificadorPagina}
-  `
-  const [filas] = await pool.query(consulta)
-  respuesta.render('index', { publicaciones: filas, busqueda: busqueda, pagina: pagina })
+  const busqueda = peticion.query.busqueda || ''
+  const pagina = peticion.query.pagina ? parseInt(peticion.query.pagina) : 0
+
+  const publicaciones = await postService.list({ busqueda, pagina })
+  respuesta.render('index', { publicaciones, busqueda, pagina })
 }))
 
+// GET /registro — Registration form
 router.get('/registro', (peticion, respuesta) => {
   respuesta.render('registro', { mensaje: peticion.flash('mensaje') })
 })
 
+// POST /procesar_registro — Handle registration
 router.post('/procesar_registro', authLimiter, validateRegister, asyncHandler(async (peticion, respuesta) => {
-  let connection
   try {
-    connection = await pool.getConnection()
+    const { email, pseudonimo, contrasena } = peticion.body
 
-    const email = peticion.body.email.toLowerCase().trim()
-    const pseudonimo = peticion.body.pseudonimo.trim()
-    const contrasenaPlana = peticion.body.contrasena
+    const resultado = await authService.register({ email, pseudonimo, contrasena })
 
-    const contrasenaHasheada = await bcrypt.hash(contrasenaPlana, 10)
-
-    const [filasEmail] = await connection.query(
-      'SELECT * FROM autores WHERE email = ?',
-      [email]
-    )
-    if (filasEmail.length > 0) {
-      peticion.flash('mensaje', 'Email duplicado')
-      return respuesta.redirect('/registro')
-    }
-
-    const [filasPseudonimo] = await connection.query(
-      'SELECT * FROM autores WHERE pseudonimo = ?',
-      [pseudonimo]
-    )
-    if (filasPseudonimo.length > 0) {
-      peticion.flash('mensaje', 'Pseudonimo duplicado')
-      return respuesta.redirect('/registro')
-    }
-
-    const [resultado] = await connection.query(
-      'INSERT INTO autores (email, contrasena, pseudonimo) VALUES (?, ?, ?)',
-      [email, contrasenaHasheada, pseudonimo]
-    )
-    const id = resultado.insertId
-
+    // Handle avatar upload if present
     if (peticion.files && peticion.files.avatar) {
       const archivoAvatar = peticion.files.avatar
-      const nombreArchivo = `${id}${path.extname(archivoAvatar.name)}`
+      const nombreArchivo = `${resultado.id}${path.extname(archivoAvatar.name)}`
       await archivoAvatar.mv(`./public/avatars/${nombreArchivo}`)
 
-      await connection.query(
-        'UPDATE autores SET avatar = ? WHERE id = ?',
-        [nombreArchivo, id]
-      )
-      enviarCorreoBienvenida(email, pseudonimo)
+      await authService.updateAvatar(resultado.id, nombreArchivo)
+      enviarCorreoBienvenida(resultado.email, resultado.pseudonimo)
       peticion.flash('mensaje', 'Usuario registrado con avatar')
-    }
-    else {
-      enviarCorreoBienvenida(email, pseudonimo)
+    } else {
+      enviarCorreoBienvenida(resultado.email, resultado.pseudonimo)
       peticion.flash('mensaje', 'Usuario registrado')
     }
-    respuesta.redirect('/registro')
   } catch (error) {
-    console.error('Error registrando usuario:', error)
-    peticion.flash('mensaje', 'Error al registrar usuario')
-    respuesta.redirect('/registro')
-  } finally {
-    if (connection) connection.release()
+    if (error.message === 'Email duplicado' || error.message === 'Pseudonimo duplicado') {
+      peticion.flash('mensaje', error.message)
+    } else {
+      console.error('Error registrando usuario:', error)
+      peticion.flash('mensaje', 'Error al registrar usuario')
+    }
+    return respuesta.redirect('/registro')
   }
+
+  respuesta.redirect('/registro')
 }))
 
+// GET /inicio — Login form
 router.get('/inicio', (peticion, respuesta) => {
   respuesta.render('inicio', { mensaje: peticion.flash('mensaje') })
 })
 
+// POST /procesar_inicio — Handle login
 router.post('/procesar_inicio', authLimiter, validateLogin, asyncHandler(async (peticion, respuesta) => {
-  const [filas] = await pool.query(
-    'SELECT * FROM autores WHERE email = ?',
-    [peticion.body.email]
-  )
+  const usuario = await authService.login(peticion.body.email, peticion.body.contrasena)
 
-  if (filas.length > 0) {
-    const coincide = await bcrypt.compare(peticion.body.contrasena, filas[0].contrasena)
-    if (coincide) {
-      peticion.session.usuario = filas[0]
-      return respuesta.redirect('/admin/index')
-    }
+  if (usuario) {
+    peticion.session.usuario = usuario
+    return respuesta.redirect('/admin/index')
   }
+
   peticion.flash('mensaje', 'Datos inválidos')
   respuesta.redirect('/inicio')
 }))
 
+// GET /publicacion/:id — View single post
 router.get('/publicacion/:id', validateIdParam, asyncHandler(async (peticion, respuesta) => {
-  const [filas] = await pool.query(
-    'SELECT * FROM publicaciones WHERE id = ?',
-    [peticion.params.id]
-  )
-  if (filas.length > 0) {
-    respuesta.render('publicacion', { publicacion: filas[0] })
-  }
-  else {
-    respuesta.redirect('/')
-  }
+  const publicacion = await postService.getById(peticion.params.id)
+  respuesta.render('publicacion', { publicacion })
 }))
 
+// GET /autores — List authors with publications
 router.get('/autores', asyncHandler(async (peticion, respuesta) => {
-  const consulta = `
-    SELECT autores.id id, pseudonimo, avatar, publicaciones.id publicacion_id, titulo
-    FROM autores
-    INNER JOIN publicaciones
-    ON autores.id = publicaciones.autor_id
-    ORDER BY autores.id DESC, publicaciones.fecha_hora DESC
-  `
-  const [filas] = await pool.query(consulta)
-
-  const autores = []
-  let ultimoAutorId = undefined
-  filas.forEach(registro => {
-    if (registro.id != ultimoAutorId) {
-      ultimoAutorId = registro.id
-      autores.push({
-        id: registro.id,
-        pseudonimo: registro.pseudonimo,
-        avatar: registro.avatar,
-        publicaciones: []
-      })
-    }
-    autores[autores.length - 1].publicaciones.push({
-      id: registro.publicacion_id,
-      titulo: registro.titulo
-    })
-  })
-  respuesta.render('autores', { autores: autores })
+  const autores = await authorService.listWithPublications()
+  respuesta.render('autores', { autores })
 }))
 
+// GET /publicacion/:id/votar — Vote for a post
 router.get('/publicacion/:id/votar', validateIdParam, asyncHandler(async (peticion, respuesta) => {
-  const [filas] = await pool.query(
-    'SELECT * FROM publicaciones WHERE id = ?',
-    [peticion.params.id]
-  )
-  if (filas.length > 0) {
-    await pool.query(
-      'UPDATE publicaciones SET votos = votos + 1 WHERE id = ?',
-      [peticion.params.id]
-    )
+  const voted = await postService.vote(peticion.params.id)
+
+  if (voted) {
     respuesta.redirect(`/publicacion/${peticion.params.id}`)
-  }
-  else {
+  } else {
     peticion.flash('mensaje', 'Publicación inválida')
     respuesta.redirect('/')
   }
