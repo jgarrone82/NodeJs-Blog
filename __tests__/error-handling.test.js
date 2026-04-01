@@ -1,8 +1,10 @@
 const request = require('supertest')
-const { mockQuery, mockGetConnection, mockConnection, mockRelease } = require('./setup')
 
 // Import app after mocks are set up
 const app = require('../webapp')
+
+// Access mock via global (set up in setup.js)
+const mockPrisma = global.__mockPrisma
 
 describe('Error Handling', () => {
   describe('Custom Error Classes', () => {
@@ -94,7 +96,7 @@ describe('Error Handling', () => {
 
   describe('API error responses', () => {
     it('should return 404 JSON for non-existent post', async () => {
-      mockQuery.mockResolvedValueOnce([[]])
+      mockPrisma.publicacion.findUnique.mockResolvedValueOnce(null)
 
       const res = await request(app).get('/api/v1/publicaciones/999')
 
@@ -104,7 +106,7 @@ describe('Error Handling', () => {
     })
 
     it('should return 404 JSON for non-existent authors list', async () => {
-      mockQuery.mockResolvedValueOnce([[]])
+      mockPrisma.autor.findMany.mockResolvedValueOnce([])
 
       const res = await request(app).get('/api/v1/autores/')
 
@@ -113,7 +115,7 @@ describe('Error Handling', () => {
     })
 
     it('should return 500 JSON when DB fails', async () => {
-      mockQuery.mockRejectedValueOnce(new Error('DB error'))
+      mockPrisma.publicacion.findMany.mockRejectedValueOnce(new Error('DB error'))
 
       const res = await request(app).get('/api/v1/publicaciones/')
 

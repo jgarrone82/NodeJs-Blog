@@ -1,0 +1,34 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Autor {
+  id            Int           @id @default(autoincrement())
+  email         String        @unique
+  contrasena    String
+  pseudonimo    String        @unique
+  avatar        String?
+  publicaciones Publicacion[]
+
+  @@map("autores")
+}
+
+model Publicacion {
+  id        Int      @id @default(autoincrement())
+  titulo    String
+  resumen   String
+  contenido String
+  foto      String?
+  votos     Int      @default(0)
+  fechaHora DateTime @map("fecha_hora")
+  autorId   Int      @map("autor_id")
+  autor     Autor    @relation(fields: [autorId], references: [id], onDelete: Cascade)
+
+  @@index([autorId])
+  @@map("publicaciones")
+}

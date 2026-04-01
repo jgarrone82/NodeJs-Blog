@@ -1,42 +1,45 @@
+const prisma = require('../../db')
 const { NotFoundError } = require('../errors')
 
 /**
  * PostService — Business logic for post operations.
+ * Uses Prisma ORM for database access.
  * No HTTP concerns (no req/res, no flash, no redirect).
  */
 class PostService {
-  constructor(pool) {
-    this.pool = pool
-  }
-
   /**
    * Get paginated list of posts with author info.
    * If busqueda is provided, search is performed instead of pagination.
    */
   async list({ busqueda = '', pagina = 0, limit = 5 } = {}) {
-    let modificadorConsulta = ''
-    let modificadorPagina = ''
+    if (pagina < 0) pagina = 0
 
     if (busqueda) {
-      const busquedaSegura = this.pool.escape(`%${busqueda}%`)
-      modificadorConsulta = `WHERE titulo LIKE ${busquedaSegura} OR resumen LIKE ${busquedaSegura} OR contenido LIKE ${busquedaSegura}`
-    } else {
-      if (pagina < 0) pagina = 0
-      modificadorPagina = `LIMIT ${limit} OFFSET ${pagina * limit}`
+      // Search mode
+      const publicaciones = await prisma.publicacion.findMany({
+        where: {
+          OR: [
+            { titulo: { contains: busqueda } },
+            { resumen: { contains: busqueda } },
+            { contenido: { contains: busqueda } }
+          ]
+        },
+        include: { autor: true },
+        orderBy: { fechaHora: 'desc' }
+      })
+
+      return publicaciones.map(this._toPublicFormat)
     }
 
-    const consulta = `
-      SELECT
-        publicaciones.id id, titulo, resumen, fecha_hora, pseudonimo, votos, avatar
-      FROM publicaciones
-      INNER JOIN autores ON publicaciones.autor_id = autores.id
-      ${modificadorConsulta}
-      ORDER BY fecha_hora DESC
-      ${modificadorPagina}
-    `
+    // Pagination mode
+    const publicaciones = await prisma.publicacion.findMany({
+      skip: pagina * limit,
+      take: limit,
+      include: { autor: true },
+      orderBy: { fechaHora: 'desc' }
+    })
 
-    const [filas] = await this.pool.query(consulta)
-    return filas
+    return publicaciones.map(this._toPublicFormat)
   }
 
   /**
@@ -44,16 +47,16 @@ class PostService {
    * Throws NotFoundError if not found.
    */
   async getById(id) {
-    const [filas] = await this.pool.query(
-      'SELECT * FROM publicaciones WHERE id = ?',
-      [id]
-    )
+    const publicacion = await prisma.publicacion.findUnique({
+      where: { id: parseInt(id) },
+      include: { autor: true }
+    })
 
-    if (filas.length === 0) {
+    if (!publicacion) {
       throw new NotFoundError('Publicación no encontrada')
     }
 
-    return filas[0]
+    return this._toPublicFormat(publicacion)
   }
 
   /**
@@ -61,27 +64,34 @@ class PostService {
    * Returns the post or null if not found or not owned by author.
    */
   async getByIdAndAuthor(id, autorId) {
-    const [filas] = await this.pool.query(
-      'SELECT * FROM publicaciones WHERE id = ? AND autor_id = ?',
-      [id, autorId]
-    )
+    const publicacion = await prisma.publicacion.findFirst({
+      where: {
+        id: parseInt(id),
+        autorId: parseInt(autorId)
+      },
+      include: { autor: true }
+    })
 
-    return filas.length > 0 ? filas[0] : null
+    return publicacion ? this._toPublicFormat(publicacion) : null
   }
 
   /**
    * Create a new post.
    */
   async create({ titulo, resumen, contenido, autorId }) {
-    const date = new Date()
-    const fecha = `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`
+    const fecha = new Date()
 
-    const [resultado] = await this.pool.query(
-      'INSERT INTO publicaciones (titulo, resumen, contenido, autor_id, fecha_hora) VALUES (?, ?, ?, ?, ?)',
-      [titulo, resumen, contenido, autorId, fecha]
-    )
+    const publicacion = await prisma.publicacion.create({
+      data: {
+        titulo,
+        resumen,
+        contenido,
+        autorId: parseInt(autorId),
+        fechaHora: fecha
+      }
+    })
 
-    return resultado.insertId
+    return publicacion.id
   }
 
   /**
@@ -90,12 +100,19 @@ class PostService {
    * Returns true if updated, false if no changes or not authorized.
    */
   async update({ id, titulo, resumen, contenido, autorId }) {
-    const [resultado] = await this.pool.query(
-      'UPDATE publicaciones SET titulo = ?, resumen = ?, contenido = ? WHERE id = ? AND autor_id = ?',
-      [titulo, resumen, contenido, id, autorId]
-    )
-
-    return resultado.changedRows > 0
+    try {
+      await prisma.publicacion.update({
+        where: {
+          id: parseInt(id),
+          autorId: parseInt(autorId)
+        },
+        data: { titulo, resumen, contenido }
+      })
+      return true
+    } catch (error) {
+      // Prisma throws P2025 when record not found
+      return false
+    }
   }
 
   /**
@@ -104,24 +121,30 @@ class PostService {
    * Returns true if deleted, false if not found or not authorized.
    */
   async delete({ id, autorId }) {
-    const [resultado] = await this.pool.query(
-      'DELETE FROM publicaciones WHERE id = ? AND autor_id = ?',
-      [id, autorId]
-    )
-
-    return resultado.affectedRows > 0
+    try {
+      await prisma.publicacion.delete({
+        where: {
+          id: parseInt(id),
+          autorId: parseInt(autorId)
+        }
+      })
+      return true
+    } catch (error) {
+      // Prisma throws P2025 when record not found
+      return false
+    }
   }
 
   /**
    * Get posts by a specific author (for admin dashboard).
    */
   async getByAuthor(autorId) {
-    const [filas] = await this.pool.query(
-      'SELECT * FROM publicaciones WHERE autor_id = ?',
-      [autorId]
-    )
+    const publicaciones = await prisma.publicacion.findMany({
+      where: { autorId: parseInt(autorId) },
+      orderBy: { fechaHora: 'desc' }
+    })
 
-    return filas
+    return publicaciones.map(this._toPublicFormat)
   }
 
   /**
@@ -129,21 +152,33 @@ class PostService {
    * Returns true if post exists and was voted.
    */
   async vote(id) {
-    const [filas] = await this.pool.query(
-      'SELECT * FROM publicaciones WHERE id = ?',
-      [id]
-    )
-
-    if (filas.length === 0) {
+    try {
+      await prisma.publicacion.update({
+        where: { id: parseInt(id) },
+        data: { votos: { increment: 1 } }
+      })
+      return true
+    } catch (error) {
       return false
     }
+  }
 
-    await this.pool.query(
-      'UPDATE publicaciones SET votos = votos + 1 WHERE id = ?',
-      [id]
-    )
-
-    return true
+  /**
+   * Convert Prisma format to the flat format expected by views.
+   * Prisma returns nested objects (publicacion.autor.pseudonimo),
+   * views expect flat fields (pseudonimo, avatar).
+   */
+  _toPublicFormat(publicacion) {
+    return {
+      id: publicacion.id,
+      titulo: publicacion.titulo,
+      resumen: publicacion.resumen,
+      contenido: publicacion.contenido,
+      fecha_hora: publicacion.fechaHora,
+      pseudonimo: publicacion.autor?.pseudonimo || '',
+      votos: publicacion.votos,
+      avatar: publicacion.autor?.avatar || null
+    }
   }
 }
 

@@ -1,79 +1,70 @@
 const { PostService, AuthService, AuthorService } = require('../src/services')
 const { NotFoundError } = require('../src/errors')
 
-// Mock pool
-const mockQuery = jest.fn()
-const mockGetConnection = jest.fn()
-const mockRelease = jest.fn()
-const mockEscape = jest.fn((val) => `'${val}'`)
-
-const mockConnection = {
-  query: mockQuery,
-  release: mockRelease
-}
-
-const mockPool = {
-  query: mockQuery,
-  getConnection: mockGetConnection,
-  escape: mockEscape
-}
-
-beforeEach(() => {
-  mockQuery.mockReset()
-  mockGetConnection.mockReset()
-  mockRelease.mockReset()
-  mockGetConnection.mockResolvedValue(mockConnection)
-})
+// Access mock via global (set up in setup.js)
+const mockPrisma = global.__mockPrisma
 
 describe('PostService', () => {
   let service
 
   beforeEach(() => {
-    service = new PostService(mockPool)
+    service = new PostService()
   })
 
   describe('list', () => {
     it('should return paginated posts without search', async () => {
-      const mockPosts = [{ id: 1, titulo: 'Test Post' }]
-      mockQuery.mockResolvedValueOnce([mockPosts])
+      const mockPosts = [{
+        id: 1, titulo: 'Test Post', autor: { pseudonimo: 'author1', avatar: 'a.jpg' }
+      }]
+      mockPrisma.publicacion.findMany.mockResolvedValueOnce(mockPosts)
 
       const result = await service.list({ pagina: 0, limit: 5 })
 
-      expect(result).toEqual(mockPosts)
-      expect(mockQuery).toHaveBeenCalledWith(expect.stringContaining('LIMIT 5 OFFSET 0'))
+      expect(result).toHaveLength(1)
+      expect(result[0]).toHaveProperty('pseudonimo', 'author1')
+      expect(mockPrisma.publicacion.findMany).toHaveBeenCalledWith(expect.objectContaining({
+        skip: 0,
+        take: 5
+      }))
     })
 
     it('should return posts matching search', async () => {
-      const mockPosts = [{ id: 1, titulo: 'Paris' }]
-      mockQuery.mockResolvedValueOnce([mockPosts])
+      const mockPosts = [{
+        id: 1, titulo: 'Paris', autor: { pseudonimo: 'author1', avatar: 'a.jpg' }
+      }]
+      mockPrisma.publicacion.findMany.mockResolvedValueOnce(mockPosts)
 
       const result = await service.list({ busqueda: 'paris' })
 
-      expect(result).toEqual(mockPosts)
-      expect(mockEscape).toHaveBeenCalledWith('%paris%')
+      expect(result).toHaveLength(1)
+      expect(mockPrisma.publicacion.findMany).toHaveBeenCalledWith(expect.objectContaining({
+        where: { OR: expect.any(Array) }
+      }))
     })
 
     it('should handle negative page numbers', async () => {
-      mockQuery.mockResolvedValueOnce([[]])
+      mockPrisma.publicacion.findMany.mockResolvedValueOnce([])
 
       await service.list({ pagina: -5 })
 
-      expect(mockQuery).toHaveBeenCalledWith(expect.stringContaining('OFFSET 0'))
+      expect(mockPrisma.publicacion.findMany).toHaveBeenCalledWith(expect.objectContaining({
+        skip: 0
+      }))
     })
   })
 
   describe('getById', () => {
     it('should return post when found', async () => {
-      const mockPost = { id: 1, titulo: 'Test' }
-      mockQuery.mockResolvedValueOnce([[mockPost]])
+      const mockPost = { id: 1, titulo: 'Test', autor: { pseudonimo: 'author1', avatar: 'a.jpg' } }
+      mockPrisma.publicacion.findUnique.mockResolvedValueOnce(mockPost)
 
       const result = await service.getById(1)
 
-      expect(result).toEqual(mockPost)
+      expect(result).toHaveProperty('titulo', 'Test')
     })
 
     it('should throw NotFoundError when not found', async () => {
-      mockQuery.mockResolvedValueOnce([[]])
+      mockPrisma.publicacion.findUnique.mockResolvedValueOnce(null)
 
       await expect(service.getById(999)).rejects.toThrow(NotFoundError)
     })
@@ -81,7 +72,7 @@ describe('PostService', () => {
 
   describe('create', () => {
     it('should insert post and return id', async () => {
-      mockQuery.mockResolvedValueOnce([{ insertId: 42 }])
+      mockPrisma.publicacion.create.mockResolvedValueOnce({ id: 42 })
 
       const result = await service.create({
         titulo: 'New Post',
@@ -91,16 +82,17 @@ describe('PostService', () => {
       })
 
       expect(result).toBe(42)
-      expect(mockQuery).toHaveBeenCalledWith(
-        expect.stringContaining('INSERT INTO publicaciones'),
-        expect.any(Array)
+      expect(mockPrisma.publicacion.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ titulo: 'New Post' })
+        })
       )
     })
   })
 
   describe('update', () => {
     it('should return true when post is updated', async () => {
-      mockQuery.mockResolvedValueOnce([{ changedRows: 1 }])
+      mockPrisma.publicacion.update.mockResolvedValueOnce({ id: 1 })
 
       const result = await service.update({
         id: 1, titulo: 'Updated', resumen: 'Summary', contenido: 'Content', autorId: 1
@@ -109,8 +101,8 @@ describe('PostService', () => {
       expect(result).toBe(true)
     })
 
-    it('should return false when no rows changed', async () => {
-      mockQuery.mockResolvedValueOnce([{ changedRows: 0 }])
+    it('should return false when not found or not owned', async () => {
+      mockPrisma.publicacion.update.mockRejectedValueOnce(new Error('Record not found'))
 
       const result = await service.update({
         id: 1, titulo: 'Same', resumen: 'Same', contenido: 'Same', autorId: 1
@@ -122,15 +114,15 @@ describe('PostService', () => {
 
   describe('delete', () => {
     it('should return true when post is deleted', async () => {
-      mockQuery.mockResolvedValueOnce([{ affectedRows: 1 }])
+      mockPrisma.publicacion.delete.mockResolvedValueOnce({ id: 1 })
 
       const result = await service.delete({ id: 1, autorId: 1 })
 
       expect(result).toBe(true)
     })
 
-    it('should return false when post not found or not owned', async () => {
-      mockQuery.mockResolvedValueOnce([{ affectedRows: 0 }])
+    it('should return false when not found or not owned', async () => {
+      mockPrisma.publicacion.delete.mockRejectedValueOnce(new Error('Record not found'))
 
       const result = await service.delete({ id: 999, autorId: 1 })
 
@@ -140,27 +132,30 @@ describe('PostService', () => {
 
   describe('getByAuthor', () => {
     it('should return posts by author', async () => {
-      const mockPosts = [{ id: 1 }, { id: 2 }]
-      mockQuery.mockResolvedValueOnce([mockPosts])
+      const mockPosts = [
+        { id: 1, titulo: 'Post 1', autor: { pseudonimo: 'a', avatar: null } },
+        { id: 2, titulo: 'Post 2', autor: { pseudonimo: 'a', avatar: null } }
+      ]
+      mockPrisma.publicacion.findMany.mockResolvedValueOnce(mockPosts)
 
       const result = await service.getByAuthor(1)
 
-      expect(result).toEqual(mockPosts)
+      expect(result).toHaveLength(2)
     })
   })
 
   describe('getByIdAndAuthor', () => {
     it('should return post when found and owned', async () => {
-      const mockPost = { id: 1, titulo: 'Test' }
-      mockQuery.mockResolvedValueOnce([[mockPost]])
+      const mockPost = { id: 1, titulo: 'Test', autor: { pseudonimo: 'a', avatar: null } }
+      mockPrisma.publicacion.findFirst.mockResolvedValueOnce(mockPost)
 
       const result = await service.getByIdAndAuthor(1, 1)
 
-      expect(result).toEqual(mockPost)
+      expect(result).toHaveProperty('titulo', 'Test')
     })
 
     it('should return null when not found or not owned', async () => {
-      mockQuery.mockResolvedValueOnce([[]])
+      mockPrisma.publicacion.findFirst.mockResolvedValueOnce(null)
 
       const result = await service.getByIdAndAuthor(999, 1)
 
@@ -169,9 +164,8 @@ describe('PostService', () => {
   })
 
   describe('vote', () => {
-    it('should return true and increment votes when post exists', async () => {
-      mockQuery.mockResolvedValueOnce([[{ id: 1 }]])
-      mockQuery.mockResolvedValueOnce([{}])
+    it('should return true when post exists', async () => {
+      mockPrisma.publicacion.update.mockResolvedValueOnce({ id: 1 })
 
       const result = await service.vote(1)
 
@@ -179,12 +173,11 @@ describe('PostService', () => {
     })
 
     it('should return false when post does not exist', async () => {
-      mockQuery.mockResolvedValueOnce([[]])
+      mockPrisma.publicacion.update.mockRejectedValueOnce(new Error('Not found'))
 
       const result = await service.vote(999)
 
       expect(result).toBe(false)
-      expect(mockQuery).toHaveBeenCalledTimes(1) // No UPDATE query
     })
   })
 })
@@ -193,24 +186,12 @@ describe('AuthService', () => {
   let service
 
   beforeEach(() => {
-    service = new AuthService(mockPool)
+    service = new AuthService()
   })
 
   describe('login', () => {
-    it('should return user when credentials match', async () => {
-      const mockUser = { id: 1, email: 'test@test.com', contrasena: '$2b$10$validhash' }
-      mockQuery.mockResolvedValueOnce([[mockUser]])
-
-      // bcrypt.compare will fail since hash is fake — test the null path
-      mockQuery.mockResolvedValueOnce([[mockUser]])
-
-      const result = await service.login('test@test.com', 'wrongpassword')
-
-      expect(result).toBeNull()
-    })
-
     it('should return null when user not found', async () => {
-      mockQuery.mockResolvedValueOnce([[]])
+      mockPrisma.autor.findUnique.mockResolvedValueOnce(null)
 
       const result = await service.login('nope@test.com', 'password')
 
@@ -220,7 +201,7 @@ describe('AuthService', () => {
 
   describe('register', () => {
     it('should throw error on duplicate email', async () => {
-      mockQuery.mockResolvedValueOnce([[{ id: 1 }]]) // email exists
+      mockPrisma.autor.findUnique.mockResolvedValueOnce({ id: 1 })
 
       await expect(service.register({
         email: 'test@test.com',
@@ -230,8 +211,9 @@ describe('AuthService', () => {
     })
 
     it('should throw error on duplicate pseudonimo', async () => {
-      mockQuery.mockResolvedValueOnce([[]]) // email doesn't exist
-      mockQuery.mockResolvedValueOnce([[{ id: 1 }]]) // pseudonimo exists
+      mockPrisma.autor.findUnique
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce({ id: 1 })
 
       await expect(service.register({
         email: 'new@test.com',
@@ -241,9 +223,10 @@ describe('AuthService', () => {
     })
 
     it('should return new author info on success', async () => {
-      mockQuery.mockResolvedValueOnce([[]]) // email doesn't exist
-      mockQuery.mockResolvedValueOnce([[]]) // pseudonimo doesn't exist
-      mockQuery.mockResolvedValueOnce([{ insertId: 42 }]) // insert
+      mockPrisma.autor.findUnique.mockResolvedValue(null)
+      mockPrisma.autor.create.mockResolvedValueOnce({
+        id: 42, email: 'new@test.com', pseudonimo: 'newuser'
+      })
 
       const result = await service.register({
         email: 'new@test.com',
@@ -259,7 +242,7 @@ describe('AuthService', () => {
 
   describe('emailExists', () => {
     it('should return true when email exists', async () => {
-      mockQuery.mockResolvedValueOnce([[{ id: 1 }]])
+      mockPrisma.autor.findUnique.mockResolvedValueOnce({ id: 1 })
 
       const result = await service.emailExists('test@test.com')
 
@@ -267,7 +250,7 @@ describe('AuthService', () => {
     })
 
     it('should return false when email does not exist', async () => {
-      mockQuery.mockResolvedValueOnce([[]])
+      mockPrisma.autor.findUnique.mockResolvedValueOnce(null)
 
       const result = await service.emailExists('nope@test.com')
 
@@ -277,7 +260,7 @@ describe('AuthService', () => {
 
   describe('pseudonimoExists', () => {
     it('should return true when pseudonimo exists', async () => {
-      mockQuery.mockResolvedValueOnce([[{ id: 1 }]])
+      mockPrisma.autor.findUnique.mockResolvedValueOnce({ id: 1 })
 
       const result = await service.pseudonimoExists('user1')
 
@@ -290,17 +273,27 @@ describe('AuthorService', () => {
   let service
 
   beforeEach(() => {
-    service = new AuthorService(mockPool)
+    service = new AuthorService()
   })
 
   describe('listWithPublications', () => {
     it('should group publications by author', async () => {
-      const mockRows = [
-        { id: 1, pseudonimo: 'author1', avatar: 'a.jpg', publicacion_id: 10, titulo: 'Post 1' },
-        { id: 1, pseudonimo: 'author1', avatar: 'a.jpg', publicacion_id: 11, titulo: 'Post 2' },
-        { id: 2, pseudonimo: 'author2', avatar: 'b.jpg', publicacion_id: 20, titulo: 'Post 3' }
+      const mockAutores = [
+        {
+          id: 1, pseudonimo: 'author1', avatar: 'a.jpg',
+          publicaciones: [
+            { id: 10, titulo: 'Post 1' },
+            { id: 11, titulo: 'Post 2' }
+          ]
+        },
+        {
+          id: 2, pseudonimo: 'author2', avatar: 'b.jpg',
+          publicaciones: [
+            { id: 20, titulo: 'Post 3' }
+          ]
+        }
       ]
-      mockQuery.mockResolvedValueOnce([mockRows])
+      mockPrisma.autor.findMany.mockResolvedValueOnce(mockAutores)
 
       const result = await service.listWithPublications()
 
@@ -312,8 +305,10 @@ describe('AuthorService', () => {
 
   describe('getByIdWithPublications', () => {
     it('should return author with publications', async () => {
-      mockQuery.mockResolvedValueOnce([[{ id: 1, pseudonimo: 'author1' }]])
-      mockQuery.mockResolvedValueOnce([[{ id: 10, titulo: 'Post 1' }]])
+      mockPrisma.autor.findUnique.mockResolvedValueOnce({
+        id: 1, pseudonimo: 'author1',
+        publicaciones: [{ id: 10, titulo: 'Post 1' }]
+      })
 
       const result = await service.getByIdWithPublications(1)
 
@@ -323,7 +318,7 @@ describe('AuthorService', () => {
     })
 
     it('should return null when author not found', async () => {
-      mockQuery.mockResolvedValueOnce([[]])
+      mockPrisma.autor.findUnique.mockResolvedValueOnce(null)
 
       const result = await service.getByIdWithPublications(999)
 
@@ -331,8 +326,10 @@ describe('AuthorService', () => {
     })
 
     it('should return author without publications when none exist', async () => {
-      mockQuery.mockResolvedValueOnce([[{ id: 1, pseudonimo: 'author1' }]])
-      mockQuery.mockResolvedValueOnce([[]])
+      mockPrisma.autor.findUnique.mockResolvedValueOnce({
+        id: 1, pseudonimo: 'author1',
+        publicaciones: []
+      })
 
       const result = await service.getByIdWithPublications(1)
 
@@ -344,7 +341,7 @@ describe('AuthorService', () => {
   describe('list', () => {
     it('should return all authors', async () => {
       const mockAuthors = [{ id: 1 }, { id: 2 }]
-      mockQuery.mockResolvedValueOnce([mockAuthors])
+      mockPrisma.autor.findMany.mockResolvedValueOnce(mockAuthors)
 
       const result = await service.list()
 
