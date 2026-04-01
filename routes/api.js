@@ -1,232 +1,151 @@
 const express = require('express')
 const router = express.Router()
-const bcrypt = require('bcrypt')
-const pool = require('../db')
 const { apiLimiter, authLimiter } = require('./rateLimiter')
 const { validateApiAuth, validateApiCreatePost, validateApiCreateAuthor, validateIdParam } = require('../validation/middleware')
 const asyncHandler = require('../src/utils/async-handler')
+const { PostService, AuthService, AuthorService } = require('../src/services')
 const { NotFoundError, AuthenticationError, ValidationError } = require('../src/errors')
+
+const pool = require('../db')
+
+// Initialize services (dependency injection)
+const postService = new PostService(pool)
+const authService = new AuthService(pool)
+const authorService = new AuthorService(pool)
 
 // Apply rate limiting to all API routes
 router.use('/api/v1/', apiLimiter)
 
+// GET /api/v1/publicaciones/:id — Get single post
 router.get('/api/v1/publicaciones/:id', validateIdParam, asyncHandler(async (peticion, respuesta) => {
-  const [filas] = await pool.query(
-    'SELECT * FROM publicaciones WHERE id = ?',
-    [peticion.params.id]
-  )
-  if (filas.length > 0) {
-    respuesta.json({ data: filas })
-  }
-  else {
-    throw new NotFoundError('Publicación no encontrada')
-  }
+  const publicacion = await postService.getById(peticion.params.id)
+  respuesta.json({ data: [publicacion] })
 }))
 
+// GET /api/v1/autores/ — List all authors
 router.get('/api/v1/autores/', asyncHandler(async (peticion, respuesta) => {
-  const [filas] = await pool.query('SELECT * FROM autores')
-  if (filas.length > 0) {
-    respuesta.json({ data: filas })
-  }
-  else {
+  const autores = await authorService.list()
+
+  if (autores.length > 0) {
+    respuesta.json({ data: autores })
+  } else {
     throw new NotFoundError('Autores no encontrados')
   }
 }))
 
+// GET /api/v1/autores/:id — Get author with publications
 router.get('/api/v1/autores/:id', validateIdParam, asyncHandler(async (peticion, respuesta) => {
-  const [filas] = await pool.query(
-    'SELECT * FROM autores WHERE id = ?',
-    [peticion.params.id]
-  )
+  const result = await authorService.getByIdWithPublications(peticion.params.id)
 
-  if (filas.length === 0) {
+  if (!result) {
     throw new NotFoundError('Autor no encontrado')
   }
 
-  const [filasPub] = await pool.query(
-    `SELECT publicaciones.id id, titulo, resumen, contenido, fecha_hora, pseudonimo, votos, avatar
-     FROM publicaciones
-     INNER JOIN autores
-     ON publicaciones.autor_id = autores.id
-     WHERE autor_id = ?`,
-    [peticion.params.id]
-  )
-
-  if (filasPub.length > 0) {
-    respuesta.json({ data: filas, publicaciones: filasPub })
-  }
-  else {
-    respuesta.json({ data: filas })
+  if (result.publications) {
+    respuesta.json({ data: [result.author], publicaciones: result.publications })
+  } else {
+    respuesta.json({ data: [result.author] })
   }
 }))
 
+// POST /api/v1/publicaciones/ — Create post (with auth via query params)
 router.post('/api/v1/publicaciones/', authLimiter, validateApiAuth, validateApiCreatePost, asyncHandler(async (peticion, respuesta) => {
-  let connection
-  try {
-    const email = (peticion.query.email) ? peticion.query.email : ""
-    const contrasena = (peticion.query.contrasena) ? peticion.query.contrasena : ""
+  const email = peticion.query.email || ''
+  const contrasena = peticion.query.contrasena || ''
 
-    if (email == "" || contrasena == "") {
-      throw new ValidationError('Email y contraseña son requeridos')
-    }
-
-    const [filas] = await pool.query(
-      'SELECT * FROM autores WHERE email = ?',
-      [email]
-    )
-
-    if (filas.length === 0) {
-      throw new AuthenticationError('Combinación de email y contraseña inválida')
-    }
-
-    const coincide = await bcrypt.compare(contrasena, filas[0].contrasena)
-    if (!coincide) {
-      throw new AuthenticationError('Combinación de email y contraseña inválida')
-    }
-
-    connection = await pool.getConnection()
-    const id = filas[0].id
-    const date = new Date()
-    const fecha = `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`
-
-    const [resultado] = await connection.query(
-      'INSERT INTO publicaciones (titulo, resumen, contenido, autor_id, fecha_hora) VALUES (?, ?, ?, ?, ?)',
-      [peticion.body.titulo, peticion.body.resumen, peticion.body.contenido, id, fecha]
-    )
-
-    const [nuevaPub] = await connection.query(
-      'SELECT * FROM publicaciones WHERE id = ?',
-      [resultado.insertId]
-    )
-
-    if (nuevaPub.length > 0) {
-      respuesta.json({ data: nuevaPub })
-    }
-    else {
-      throw new Error('Error al crear publicación')
-    }
-  } finally {
-    if (connection) connection.release()
-  }
-}))
-
-router.delete('/api/v1/publicaciones/:id', authLimiter, validateIdParam, asyncHandler(async (peticion, respuesta) => {
-  const email = (peticion.query.email) ? peticion.query.email : ""
-  const contrasena = (peticion.query.contrasena) ? peticion.query.contrasena : ""
-
-  if (email == "" || contrasena == "") {
+  if (!email || !contrasena) {
     throw new ValidationError('Email y contraseña son requeridos')
   }
 
-  const [filas] = await pool.query(
-    'SELECT * FROM autores WHERE email = ?',
-    [email]
-  )
-
-  if (filas.length === 0) {
+  const usuario = await authService.login(email, contrasena)
+  if (!usuario) {
     throw new AuthenticationError('Combinación de email y contraseña inválida')
   }
 
-  const coincide = await bcrypt.compare(contrasena, filas[0].contrasena)
-  if (!coincide) {
-    throw new AuthenticationError('Combinación de email y contraseña inválida')
-  }
+  const { titulo, resumen, contenido } = peticion.body
 
-  const id_autor = filas[0].id
-  const [filasPub] = await pool.query(
-    'SELECT * FROM publicaciones WHERE id = ? AND autor_id = ?',
-    [peticion.params.id, id_autor]
+  const nuevoId = await postService.create({
+    titulo,
+    resumen,
+    contenido,
+    autorId: usuario.id
+  })
+
+  const [nuevaPub] = await pool.query(
+    'SELECT * FROM publicaciones WHERE id = ?',
+    [nuevoId]
   )
 
-  if (filasPub.length === 0) {
-    throw new Error('La publicación no pertenece al autor')
-  }
-
-  const [resultado] = await pool.query(
-    'DELETE FROM publicaciones WHERE id = ? AND autor_id = ?',
-    [peticion.params.id, id_autor]
-  )
-
-  if (resultado.affectedRows > 0) {
-    respuesta.status(200).send("Publicación eliminada")
-  }
-  else {
-    throw new Error('Publicación no eliminada')
+  if (nuevaPub.length > 0) {
+    respuesta.json({ data: nuevaPub })
+  } else {
+    throw new Error('Error al crear publicación')
   }
 }))
 
-router.get('/api/v1/publicaciones/', asyncHandler(async (peticion, respuesta) => {
-  let modificadorConsulta = ""
-  const busqueda = (peticion.query.busqueda) ? peticion.query.busqueda : ""
-  if (busqueda != "") {
-    const busquedaSegura = pool.escape(`%${busqueda}%`)
-    modificadorConsulta = `WHERE titulo LIKE ${busquedaSegura} OR resumen LIKE ${busquedaSegura} OR contenido LIKE ${busquedaSegura}`
+// DELETE /api/v1/publicaciones/:id — Delete post (with auth via query params)
+router.delete('/api/v1/publicaciones/:id', authLimiter, validateIdParam, asyncHandler(async (peticion, respuesta) => {
+  const email = peticion.query.email || ''
+  const contrasena = peticion.query.contrasena || ''
+
+  if (!email || !contrasena) {
+    throw new ValidationError('Email y contraseña son requeridos')
   }
 
-  const consulta = `
-    SELECT publicaciones.id id, titulo, resumen, contenido, fecha_hora, pseudonimo, votos, avatar
-    FROM publicaciones
-    INNER JOIN autores
-    ON publicaciones.autor_id = autores.id
-    ${modificadorConsulta}
-    ORDER BY publicaciones.id
-  `
-  const [filas] = await pool.query(consulta)
-  if (filas.length > 0) {
-    respuesta.json({ data: filas })
+  const usuario = await authService.login(email, contrasena)
+  if (!usuario) {
+    throw new AuthenticationError('Combinación de email y contraseña inválida')
   }
-  else {
+
+  const eliminado = await postService.delete({
+    id: peticion.params.id,
+    autorId: usuario.id
+  })
+
+  if (eliminado) {
+    respuesta.status(200).send('Publicación eliminada')
+  } else {
+    throw new Error('La publicación no pertenece al autor')
+  }
+}))
+
+// GET /api/v1/publicaciones/ — List posts (with optional search)
+router.get('/api/v1/publicaciones/', asyncHandler(async (peticion, respuesta) => {
+  const busqueda = peticion.query.busqueda || ''
+
+  const publicaciones = await postService.list({ busqueda, pagina: 0, limit: 1000 })
+
+  if (publicaciones.length > 0) {
+    respuesta.json({ data: publicaciones })
+  } else {
     throw new NotFoundError('Publicaciones no encontradas')
   }
 }))
 
+// POST /api/v1/autores/ — Register author
 router.post('/api/v1/autores/', authLimiter, validateApiCreateAuthor, asyncHandler(async (peticion, respuesta) => {
-  let connection
-  try {
-    const email = peticion.body.email.toLowerCase().trim()
-    const pseudonimo = peticion.body.pseudonimo.trim()
-    const contrasenaPlana = peticion.body.contrasena
+  const { email, pseudonimo, contrasena } = peticion.body
 
-    const contrasenaHasheada = await bcrypt.hash(contrasenaPlana, 10)
+  // Check duplicates
+  if (await authService.emailExists(email.toLowerCase().trim())) {
+    return respuesta.status(409).send('Email duplicado')
+  }
 
-    connection = await pool.getConnection()
+  if (await authService.pseudonimoExists(pseudonimo.trim())) {
+    return respuesta.status(409).send('Pseudonimo duplicado')
+  }
 
-    const [filasEmail] = await connection.query(
-      'SELECT * FROM autores WHERE email = ?',
-      [email]
-    )
-    if (filasEmail.length > 0) {
-      respuesta.status(409).send("Email duplicado")
-      return
-    }
+  const resultado = await authService.register({ email, pseudonimo, contrasena })
 
-    const [filasPseudonimo] = await connection.query(
-      'SELECT * FROM autores WHERE pseudonimo = ?',
-      [pseudonimo]
-    )
-    if (filasPseudonimo.length > 0) {
-      respuesta.status(409).send("Pseudonimo duplicado")
-      return
-    }
+  const [nuevoAutor] = await pool.query(
+    'SELECT * FROM autores WHERE id = ?',
+    [resultado.id]
+  )
 
-    const [resultado] = await connection.query(
-      'INSERT INTO autores (email, contrasena, pseudonimo) VALUES (?, ?, ?)',
-      [email, contrasenaHasheada, pseudonimo]
-    )
-
-    const [nuevoAutor] = await connection.query(
-      'SELECT * FROM autores WHERE id = ?',
-      [resultado.insertId]
-    )
-
-    if (nuevoAutor.length > 0) {
-      respuesta.json({ data: nuevoAutor })
-    }
-    else {
-      throw new Error('Error al crear autor')
-    }
-  } finally {
-    if (connection) connection.release()
+  if (nuevoAutor.length > 0) {
+    respuesta.json({ data: nuevoAutor })
+  } else {
+    throw new Error('Error al crear autor')
   }
 }))
 
