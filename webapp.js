@@ -1,4 +1,5 @@
 require('dotenv').config()
+const config = require('./src/config/env')
 const express = require('express')
 const helmet = require('helmet')
 const aplicacion = express()
@@ -10,6 +11,7 @@ const rutasMiddleware = require('./routes/middleware')
 const rutasPublicas = require('./routes/publicas')
 const rutasPrivadas = require('./routes/privadas')
 const rutasApi = require('./routes/api')
+const { errorHandler, notFoundHandler } = require('./src/middleware/error-handler')
 
 // Security headers
 aplicacion.use(helmet({
@@ -19,7 +21,7 @@ aplicacion.use(helmet({
 aplicacion.use(express.json())
 aplicacion.use(express.urlencoded({ extended: true }))
 aplicacion.set("view engine", "ejs")
-aplicacion.use(session({ secret: process.env.SESSION_SECRET, resave: true, saveUninitialized: true }));
+aplicacion.use(session({ secret: config.session.secret, resave: true, saveUninitialized: true }));
 aplicacion.use(flash())
 
 // Static assets with cache headers
@@ -51,10 +53,16 @@ aplicacion.use(rutasPublicas)
 aplicacion.use(rutasPrivadas)
 aplicacion.use(rutasApi)
 
+// 404 handler — catches unmatched routes
+aplicacion.use(notFoundHandler)
+
+// Global error handler — must be last
+aplicacion.use(errorHandler)
+
 // Only start server when run directly (not when required by tests)
 if (require.main === module) {
-  aplicacion.listen(8080, () => {
-    console.log("Servidor iniciado")
+  aplicacion.listen(config.server.port, () => {
+    console.log(`Servidor iniciado en puerto ${config.server.port} (${config.server.env})`)
   })
 }
 
