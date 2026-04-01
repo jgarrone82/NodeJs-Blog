@@ -11,6 +11,7 @@ const rutasMiddleware = require('./routes/middleware')
 const rutasPublicas = require('./routes/publicas')
 const rutasPrivadas = require('./routes/privadas')
 const rutasApi = require('./routes/api')
+const { errorHandler, notFoundHandler } = require('./src/middleware/error-handler')
 
 // Security headers
 aplicacion.use(helmet({
@@ -51,6 +52,12 @@ aplicacion.use(rutasMiddleware)
 aplicacion.use(rutasPublicas)
 aplicacion.use(rutasPrivadas)
 aplicacion.use(rutasApi)
+
+// 404 handler — catches unmatched routes
+aplicacion.use(notFoundHandler)
+
+// Global error handler — must be last
+aplicacion.use(errorHandler)
 
 // Only start server when run directly (not when required by tests)
 if (require.main === module) {
