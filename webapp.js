@@ -1,4 +1,5 @@
 require('dotenv').config()
+const config = require('./src/config/env')
 const express = require('express')
 const helmet = require('helmet')
 const aplicacion = express()
@@ -19,7 +20,7 @@ aplicacion.use(helmet({
 aplicacion.use(express.json())
 aplicacion.use(express.urlencoded({ extended: true }))
 aplicacion.set("view engine", "ejs")
-aplicacion.use(session({ secret: process.env.SESSION_SECRET, resave: true, saveUninitialized: true }));
+aplicacion.use(session({ secret: config.session.secret, resave: true, saveUninitialized: true }));
 aplicacion.use(flash())
 
 // Static assets with cache headers
@@ -53,8 +54,8 @@ aplicacion.use(rutasApi)
 
 // Only start server when run directly (not when required by tests)
 if (require.main === module) {
-  aplicacion.listen(8080, () => {
-    console.log("Servidor iniciado")
+  aplicacion.listen(config.server.port, () => {
+    console.log(`Servidor iniciado en puerto ${config.server.port} (${config.server.env})`)
   })
 }
 

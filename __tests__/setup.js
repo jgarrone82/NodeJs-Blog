@@ -1,3 +1,11 @@
+// Set required environment variables for config validation
+process.env.DB_HOST = 'localhost'
+process.env.DB_USER = 'test'
+process.env.DB_PASSWORD = 'test'
+process.env.DB_NAME = 'test_blog'
+process.env.SESSION_SECRET = 'test-secret'
+process.env.NODE_ENV = 'test'
+
 // Mock mysql2/promise before any module imports it
 const mockQuery = jest.fn()
 const mockGetConnection = jest.fn()
