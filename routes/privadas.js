@@ -5,10 +5,8 @@ const { validateCreatePost, validateEditPost, validateDeletePost, validateIdPara
 const asyncHandler = require('../src/utils/async-handler')
 const { PostService } = require('../src/services')
 
-const pool = require('../db')
-
-// Initialize service (dependency injection)
-const postService = new PostService(pool)
+// Initialize service
+const postService = new PostService()
 
 // GET /admin/index — Dashboard with author's posts
 router.get('/admin/index', asyncHandler(async (peticion, respuesta) => {

@@ -5,13 +5,12 @@ const { validateApiAuth, validateApiCreatePost, validateApiCreateAuthor, validat
 const asyncHandler = require('../src/utils/async-handler')
 const { PostService, AuthService, AuthorService } = require('../src/services')
 const { NotFoundError, AuthenticationError, ValidationError } = require('../src/errors')
+const prisma = require('../db')
 
-const pool = require('../db')
-
-// Initialize services (dependency injection)
-const postService = new PostService(pool)
-const authService = new AuthService(pool)
-const authorService = new AuthorService(pool)
+// Initialize services
+const postService = new PostService()
+const authService = new AuthService()
+const authorService = new AuthorService()
 
 // Apply rate limiting to all API routes
 router.use('/api/v1/', apiLimiter)
@@ -71,13 +70,13 @@ router.post('/api/v1/publicaciones/', authLimiter, validateApiAuth, validateApiC
     autorId: usuario.id
   })
 
-  const [nuevaPub] = await pool.query(
-    'SELECT * FROM publicaciones WHERE id = ?',
-    [nuevoId]
-  )
+  const nuevaPub = await prisma.publicacion.findUnique({
+    where: { id: nuevoId },
+    include: { autor: true }
+  })
 
-  if (nuevaPub.length > 0) {
-    respuesta.json({ data: nuevaPub })
+  if (nuevaPub) {
+    respuesta.json({ data: [nuevaPub] })
   } else {
     throw new Error('Error al crear publicación')
   }
@@ -137,13 +136,12 @@ router.post('/api/v1/autores/', authLimiter, validateApiCreateAuthor, asyncHandl
 
   const resultado = await authService.register({ email, pseudonimo, contrasena })
 
-  const [nuevoAutor] = await pool.query(
-    'SELECT * FROM autores WHERE id = ?',
-    [resultado.id]
-  )
+  const nuevoAutor = await prisma.autor.findUnique({
+    where: { id: resultado.id }
+  })
 
-  if (nuevoAutor.length > 0) {
-    respuesta.json({ data: nuevoAutor })
+  if (nuevoAutor) {
+    respuesta.json({ data: [nuevoAutor] })
   } else {
     throw new Error('Error al crear autor')
   }

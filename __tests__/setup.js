@@ -5,42 +5,77 @@ process.env.DB_PASSWORD = 'test'
 process.env.DB_NAME = 'test_blog'
 process.env.SESSION_SECRET = 'test-secret'
 process.env.NODE_ENV = 'test'
+process.env.DATABASE_URL = 'mysql://test:test@localhost:3306/test_blog'
 
-// Mock mysql2/promise before any module imports it
-const mockQuery = jest.fn()
-const mockGetConnection = jest.fn()
-const mockRelease = jest.fn()
-const mockEscape = jest.fn((val) => `'${val}'`)
-
-const mockConnection = {
-  query: mockQuery,
-  release: mockRelease
+// Mock Prisma client — must be defined before jest.mock for hoisting
+// Using a mutable object that jest.mock can reference
+const mockPrisma = {
+  autor: {
+    findUnique: jest.fn(),
+    findMany: jest.fn(),
+    create: jest.fn(),
+    update: jest.fn(),
+    delete: jest.fn()
+  },
+  publicacion: {
+    findUnique: jest.fn(),
+    findFirst: jest.fn(),
+    findMany: jest.fn(),
+    create: jest.fn(),
+    update: jest.fn(),
+    delete: jest.fn()
+  },
+  $disconnect: jest.fn()
 }
 
-const mockPool = {
-  query: mockQuery,
-  getConnection: mockGetConnection,
-  escape: mockEscape
-}
+jest.mock('@prisma/client', () => {
+  const mockPrisma = {
+    autor: {
+      findUnique: jest.fn(),
+      findMany: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn()
+    },
+    publicacion: {
+      findUnique: jest.fn(),
+      findFirst: jest.fn(),
+      findMany: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn()
+    },
+    $disconnect: jest.fn()
+  }
+
+  // Attach to global so tests can access it
+  global.__mockPrisma = mockPrisma
+
+  return {
+    PrismaClient: jest.fn(() => mockPrisma)
+  }
+})
+
+// Mock rate limiter to pass-through (no rate limiting in tests)
+jest.mock('../routes/rateLimiter', () => ({
+  authLimiter: (req, res, next) => next(),
+  apiLimiter: (req, res, next) => next(),
+  postLimiter: (req, res, next) => next()
+}))
 
 // Reset mocks before each test
 beforeEach(() => {
-  mockQuery.mockReset()
-  mockGetConnection.mockReset()
-  mockRelease.mockReset()
-  mockGetConnection.mockResolvedValue(mockConnection)
+  const mp = global.__mockPrisma
+  if (mp) {
+    Object.values(mp.autor).forEach(fn => {
+      if (typeof fn.mockReset === 'function') fn.mockReset()
+    })
+    Object.values(mp.publicacion).forEach(fn => {
+      if (typeof fn.mockReset === 'function') fn.mockReset()
+    })
+  }
 })
 
-jest.mock('mysql2/promise', () => ({
-  createPool: jest.fn(() => mockPool)
-}))
-
-// Mock rate limiter to pass-through (no rate limiting in tests)
-const passThrough = (req, res, next) => next()
-jest.mock('../routes/rateLimiter', () => ({
-  authLimiter: passThrough,
-  apiLimiter: passThrough,
-  postLimiter: passThrough
-}))
-
-module.exports = { mockPool, mockQuery, mockGetConnection, mockRelease, mockEscape }
+module.exports = {
+  get mockPrisma() { return global.__mockPrisma }
+}

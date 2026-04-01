@@ -7,12 +7,10 @@ const { validateRegister, validateLogin, validateIdParam } = require('../validat
 const asyncHandler = require('../src/utils/async-handler')
 const { PostService, AuthService, AuthorService } = require('../src/services')
 
-const pool = require('../db')
-
-// Initialize services (dependency injection)
-const postService = new PostService(pool)
-const authService = new AuthService(pool)
-const authorService = new AuthorService(pool)
+// Initialize services
+const postService = new PostService()
+const authService = new AuthService()
+const authorService = new AuthorService()
 
 // Email transporter (infrastructure concern — stays in route layer)
 const transporter = nodemailer.createTransport({

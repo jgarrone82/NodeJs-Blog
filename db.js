@@ -1,12 +1,10 @@
-const mysql = require('mysql2/promise')
-const config = require('./src/config/env')
+const { PrismaClient } = require('@prisma/client')
 
-const pool = mysql.createPool({
-  connectionLimit: 20,
-  host: config.db.host,
-  user: config.db.user,
-  password: config.db.password,
-  database: config.db.name
+const prisma = new PrismaClient()
+
+// Graceful shutdown
+process.on('beforeExit', async () => {
+  await prisma.$disconnect()
 })
 
-module.exports = pool
+module.exports = prisma

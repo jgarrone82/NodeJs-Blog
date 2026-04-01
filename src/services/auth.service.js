@@ -1,34 +1,31 @@
 const bcrypt = require('bcrypt')
+const prisma = require('../../db')
 
 /**
  * AuthService — Business logic for authentication operations.
+ * Uses Prisma ORM for database access.
  * No HTTP concerns (no req/res, no flash, no redirect).
  */
 class AuthService {
-  constructor(pool) {
-    this.pool = pool
-  }
-
   /**
    * Authenticate a user by email and password.
    * Returns the user object if credentials are valid, null otherwise.
    */
   async login(email, password) {
-    const [filas] = await this.pool.query(
-      'SELECT * FROM autores WHERE email = ?',
-      [email]
-    )
+    const autor = await prisma.autor.findUnique({
+      where: { email }
+    })
 
-    if (filas.length === 0) {
+    if (!autor) {
       return null
     }
 
-    const coincide = await bcrypt.compare(password, filas[0].contrasena)
+    const coincide = await bcrypt.compare(password, autor.contrasena)
     if (!coincide) {
       return null
     }
 
-    return filas[0]
+    return autor
   }
 
   /**
@@ -37,45 +34,39 @@ class AuthService {
    * Throws Error if email or pseudonimo already exists.
    */
   async register({ email, pseudonimo, contrasena }) {
-    const connection = await this.pool.getConnection()
+    const emailLower = email.toLowerCase().trim()
+    const pseudonimoTrimmed = pseudonimo.trim()
 
-    try {
-      const emailLower = email.toLowerCase().trim()
-      const pseudonimoTrimmed = pseudonimo.trim()
+    // Check for duplicate email
+    const existingEmail = await prisma.autor.findUnique({
+      where: { email: emailLower }
+    })
+    if (existingEmail) {
+      throw new Error('Email duplicado')
+    }
 
-      const contrasenaHasheada = await bcrypt.hash(contrasena, 10)
+    // Check for duplicate pseudonimo
+    const existingPseudonimo = await prisma.autor.findUnique({
+      where: { pseudonimo: pseudonimoTrimmed }
+    })
+    if (existingPseudonimo) {
+      throw new Error('Pseudonimo duplicado')
+    }
 
-      // Check for duplicate email
-      const [filasEmail] = await connection.query(
-        'SELECT * FROM autores WHERE email = ?',
-        [emailLower]
-      )
-      if (filasEmail.length > 0) {
-        throw new Error('Email duplicado')
-      }
+    const contrasenaHasheada = await bcrypt.hash(contrasena, 10)
 
-      // Check for duplicate pseudonimo
-      const [filasPseudonimo] = await connection.query(
-        'SELECT * FROM autores WHERE pseudonimo = ?',
-        [pseudonimoTrimmed]
-      )
-      if (filasPseudonimo.length > 0) {
-        throw new Error('Pseudonimo duplicado')
-      }
-
-      // Insert new author
-      const [resultado] = await connection.query(
-        'INSERT INTO autores (email, contrasena, pseudonimo) VALUES (?, ?, ?)',
-        [emailLower, contrasenaHasheada, pseudonimoTrimmed]
-      )
-
-      return {
-        id: resultado.insertId,
+    const autor = await prisma.autor.create({
+      data: {
         email: emailLower,
+        contrasena: contrasenaHasheada,
         pseudonimo: pseudonimoTrimmed
       }
-    } finally {
-      connection.release()
+    })
+
+    return {
+      id: autor.id,
+      email: autor.email,
+      pseudonimo: autor.pseudonimo
     }
   }
 
@@ -83,32 +74,30 @@ class AuthService {
    * Update avatar for an author.
    */
   async updateAvatar(autorId, avatarFilename) {
-    await this.pool.query(
-      'UPDATE autores SET avatar = ? WHERE id = ?',
-      [avatarFilename, autorId]
-    )
+    await prisma.autor.update({
+      where: { id: parseInt(autorId) },
+      data: { avatar: avatarFilename }
+    })
   }
 
   /**
    * Check if an email exists.
    */
   async emailExists(email) {
-    const [filas] = await this.pool.query(
-      'SELECT id FROM autores WHERE email = ?',
-      [email]
-    )
-    return filas.length > 0
+    const autor = await prisma.autor.findUnique({
+      where: { email: email.toLowerCase().trim() }
+    })
+    return !!autor
   }
 
   /**
    * Check if a pseudonimo exists.
    */
   async pseudonimoExists(pseudonimo) {
-    const [filas] = await this.pool.query(
-      'SELECT id FROM autores WHERE pseudonimo = ?',
-      [pseudonimo]
-    )
-    return filas.length > 0
+    const autor = await prisma.autor.findUnique({
+      where: { pseudonimo: pseudonimo.trim() }
+    })
+    return !!autor
   }
 }
 
