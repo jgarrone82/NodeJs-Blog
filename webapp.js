@@ -2,6 +2,8 @@ require('dotenv').config()
 const config = require('./src/config/env')
 const express = require('express')
 const helmet = require('helmet')
+const swaggerJsdoc = require('swagger-jsdoc')
+const swaggerUi = require('swagger-ui-express')
 const aplicacion = express()
 const session = require('express-session')
 const flash = require('express-flash')
@@ -12,6 +14,36 @@ const rutasPublicas = require('./routes/publicas')
 const rutasPrivadas = require('./routes/privadas')
 const rutasApi = require('./routes/api')
 const { errorHandler, notFoundHandler } = require('./src/middleware/error-handler')
+
+// Swagger configuration
+const swaggerOptions = {
+  definition: {
+    openapi: '3.0.0',
+    info: {
+      title: 'NodeJs Blog API',
+      version: '1.0.0',
+      description: 'REST API for the travel blog application'
+    },
+    servers: [
+      {
+        url: `http://localhost:${config.server.port}`,
+        description: 'Development server'
+      }
+    ],
+    components: {
+      securitySchemes: {
+        bearerAuth: {
+          type: 'http',
+          scheme: 'bearer',
+          bearerFormat: 'JWT'
+        }
+      }
+    }
+  },
+  apis: ['./routes/api.js']
+}
+
+const swaggerSpec = swaggerJsdoc(swaggerOptions)
 
 // Security headers
 aplicacion.use(helmet({
@@ -48,6 +80,11 @@ aplicacion.use(express.static('public', {
 
 aplicacion.use(fileUpload())
 
+// Swagger docs (available in development)
+if (config.server.isDev) {
+  aplicacion.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec))
+}
+
 aplicacion.use(rutasMiddleware)
 aplicacion.use(rutasPublicas)
 aplicacion.use(rutasPrivadas)
@@ -63,6 +100,9 @@ aplicacion.use(errorHandler)
 if (require.main === module) {
   aplicacion.listen(config.server.port, () => {
     console.log(`Servidor iniciado en puerto ${config.server.port} (${config.server.env})`)
+    if (config.server.isDev) {
+      console.log(`📖 API Docs: http://localhost:${config.server.port}/api/docs`)
+    }
   })
 }
 

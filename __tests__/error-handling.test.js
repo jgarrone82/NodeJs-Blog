@@ -1,9 +1,5 @@
 const request = require('supertest')
-
-// Import app after mocks are set up
 const app = require('../webapp')
-
-// Access mock via global (set up in setup.js)
 const mockPrisma = global.__mockPrisma
 
 describe('Error Handling', () => {
@@ -72,7 +68,6 @@ describe('Error Handling', () => {
       const mockNext = jest.fn()
       handler({}, {}, mockNext)
 
-      // Wait for promise rejection
       setTimeout(() => {
         expect(mockNext).toHaveBeenCalledWith(expect.any(Error))
         done()
@@ -105,13 +100,13 @@ describe('Error Handling', () => {
       expect(res.body.error).toHaveProperty('message')
     })
 
-    it('should return 404 JSON for non-existent authors list', async () => {
+    it('should return 200 JSON for empty authors list', async () => {
       mockPrisma.autor.findMany.mockResolvedValueOnce([])
 
       const res = await request(app).get('/api/v1/autores/')
 
-      expect(res.status).toBe(404)
-      expect(res.body).toHaveProperty('error')
+      expect(res.status).toBe(200)
+      expect(res.body.data).toEqual([])
     })
 
     it('should return 500 JSON when DB fails', async () => {
@@ -124,11 +119,11 @@ describe('Error Handling', () => {
       expect(res.body.error).toHaveProperty('message')
     })
 
-    it('should return 400 for validation errors on API', async () => {
+    it('should return 401 for missing JWT token', async () => {
       const res = await request(app)
         .delete('/api/v1/publicaciones/1')
 
-      expect(res.status).toBe(400)
+      expect(res.status).toBe(401)
       expect(res.body).toHaveProperty('error')
     })
   })
