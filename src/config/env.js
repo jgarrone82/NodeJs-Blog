@@ -1,4 +1,5 @@
 const Joi = require('joi')
+const pino = require('pino')
 
 const envSchema = Joi.object({
   // Database (required)
@@ -57,9 +58,8 @@ function loadConfig() {
 
   if (error) {
     const mensajes = error.details.map(d => d.message).join('\n  - ')
-    console.error('\n❌ Environment validation failed:')
-    console.error(`  - ${mensajes}\n`)
-    console.error('Check your .env file or environment variables.\n')
+    const startupLogger = pino({ name: 'env-validation' })
+    startupLogger.fatal({ error: mensajes }, 'Environment validation failed')
     process.exit(1)
   }
 

@@ -8,6 +8,8 @@ const aplicacion = express()
 const session = require('express-session')
 const flash = require('express-flash')
 const fileUpload = require('express-fileupload')
+const logger = require('./src/logger')
+const requestLogger = require('./src/middleware/request-logger')
 
 const rutasMiddleware = require('./routes/middleware')
 const rutasPublicas = require('./routes/publicas')
@@ -85,6 +87,9 @@ if (config.server.isDev) {
   aplicacion.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec))
 }
 
+// Request logging (after security middleware, before routes)
+aplicacion.use(requestLogger)
+
 aplicacion.use(rutasMiddleware)
 aplicacion.use(rutasPublicas)
 aplicacion.use(rutasPrivadas)
@@ -99,9 +104,9 @@ aplicacion.use(errorHandler)
 // Only start server when run directly (not when required by tests)
 if (require.main === module) {
   aplicacion.listen(config.server.port, () => {
-    console.log(`Servidor iniciado en puerto ${config.server.port} (${config.server.env})`)
+    logger.info(`Servidor iniciado en puerto ${config.server.port} (${config.server.env})`)
     if (config.server.isDev) {
-      console.log(`📖 API Docs: http://localhost:${config.server.port}/api/docs`)
+      logger.info(`API Docs: http://localhost:${config.server.port}/api/docs`)
     }
   })
 }

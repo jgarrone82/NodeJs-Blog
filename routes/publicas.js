@@ -6,6 +6,7 @@ const { authLimiter } = require('./rateLimiter')
 const { validateRegister, validateLogin, validateIdParam } = require('../validation/middleware')
 const asyncHandler = require('../src/utils/async-handler')
 const { PostService, AuthService, AuthorService } = require('../src/services')
+const logger = require('../src/logger')
 
 // Initialize services
 const postService = new PostService()
@@ -29,7 +30,7 @@ function enviarCorreoBienvenida(email, nombre) {
     text: `Hola ${nombre}`
   }
   transporter.sendMail(opciones, (error, info) => {
-    if (error) console.error('Error enviando correo:', error)
+    if (error) logger.error({ error: error.message, email }, 'Failed to send welcome email')
   })
 }
 
@@ -71,7 +72,7 @@ router.post('/procesar_registro', authLimiter, validateRegister, asyncHandler(as
     if (error.message === 'Email duplicado' || error.message === 'Pseudonimo duplicado') {
       peticion.flash('mensaje', error.message)
     } else {
-      console.error('Error registrando usuario:', error)
+      logger.error({ error: error.message, email, pseudonimo }, 'Error registering user')
       peticion.flash('mensaje', 'Error al registrar usuario')
     }
     return respuesta.redirect('/registro')
