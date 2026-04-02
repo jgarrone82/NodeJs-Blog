@@ -1,4 +1,5 @@
 const prisma = require('../../db')
+const { get, set, invalidateAuthors, TTL, KEYS } = require('../cache')
 
 /**
  * AuthorService — Business logic for author/public profile operations.
@@ -11,6 +12,9 @@ class AuthorService {
    * Returns authors grouped with their posts.
    */
   async listWithPublications() {
+    const { data, hit } = get(KEYS.AUTHOR_LIST)
+    if (hit) return data
+
     const autores = await prisma.autor.findMany({
       include: {
         publicaciones: {
@@ -20,7 +24,7 @@ class AuthorService {
       orderBy: { id: 'desc' }
     })
 
-    return autores.map(autor => ({
+    const result = autores.map(autor => ({
       id: autor.id,
       pseudonimo: autor.pseudonimo,
       avatar: autor.avatar,
@@ -29,6 +33,9 @@ class AuthorService {
         titulo: pub.titulo
       }))
     }))
+
+    set(KEYS.AUTHOR_LIST, result, TTL.AUTHOR_LIST)
+    return result
   }
 
   /**
@@ -36,6 +43,10 @@ class AuthorService {
    * Returns { author, publications } or null if not found.
    */
   async getByIdWithPublications(id) {
+    const cacheKey = KEYS.AUTHOR_SINGLE(id)
+    const { data, hit } = get(cacheKey)
+    if (hit) return data
+
     const autor = await prisma.autor.findUnique({
       where: { id: parseInt(id) },
       include: {
@@ -49,10 +60,13 @@ class AuthorService {
       return null
     }
 
-    return {
+    const result = {
       author: autor,
       publications: autor.publicaciones.length > 0 ? autor.publicaciones : null
     }
+
+    set(cacheKey, result, TTL.AUTHOR_SINGLE)
+    return result
   }
 
   /**

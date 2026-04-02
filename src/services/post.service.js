@@ -1,5 +1,6 @@
 const prisma = require('../../db')
 const { NotFoundError } = require('../errors')
+const { get, set, invalidatePosts, TTL, KEYS } = require('../cache')
 
 /**
  * PostService — Business logic for post operations.
@@ -13,6 +14,14 @@ class PostService {
    */
   async list({ busqueda = '', pagina = 0, limit = 5, ordenar = 'fecha', direccion = 'desc' } = {}) {
     if (pagina < 0) pagina = 0
+
+    // Only cache non-search, default sort queries (search results are too varied)
+    const cacheable = !busqueda && ordenar === 'fecha' && direccion === 'desc'
+
+    if (cacheable) {
+      const { data, hit } = get(KEYS.POST_LIST(busqueda, pagina))
+      if (hit) return data
+    }
 
     // Map sort field to Prisma field names
     const sortFieldMap = {
@@ -41,7 +50,13 @@ class PostService {
       orderBy: { [sortField]: sortDir }
     })
 
-    return publicaciones.map(this._toPublicFormat)
+    const result = publicaciones.map(this._toPublicFormat)
+
+    if (cacheable) {
+      set(KEYS.POST_LIST(busqueda, pagina), result, TTL.POST_LIST)
+    }
+
+    return result
   }
 
   /**
@@ -49,6 +64,10 @@ class PostService {
    * Throws NotFoundError if not found.
    */
   async getById(id) {
+    const cacheKey = KEYS.POST_SINGLE(id)
+    const { data, hit } = get(cacheKey)
+    if (hit) return data
+
     const publicacion = await prisma.publicacion.findUnique({
       where: { id: parseInt(id) },
       include: { autor: true }
@@ -58,7 +77,9 @@ class PostService {
       throw new NotFoundError('Publicación no encontrada')
     }
 
-    return this._toPublicFormat(publicacion)
+    const result = this._toPublicFormat(publicacion)
+    set(cacheKey, result, TTL.POST_SINGLE)
+    return result
   }
 
   /**
@@ -93,6 +114,9 @@ class PostService {
       }
     })
 
+    // Invalidate all post cache when a new post is created
+    invalidatePosts()
+
     return publicacion.id
   }
 
@@ -110,6 +134,8 @@ class PostService {
         },
         data: { titulo, resumen, contenido }
       })
+      // Invalidate all post cache when a post is updated
+      invalidatePosts()
       return true
     } catch (error) {
       // Prisma throws P2025 when record not found
@@ -130,6 +156,8 @@ class PostService {
           autorId: parseInt(autorId)
         }
       })
+      // Invalidate all post cache when a post is deleted
+      invalidatePosts()
       return true
     } catch (error) {
       // Prisma throws P2025 when record not found
