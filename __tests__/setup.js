@@ -83,7 +83,7 @@ jest.mock('../src/middleware/auth.middleware', () => ({
   generateToken: () => 'mock-jwt-token'
 }))
 
-// Reset mocks before each test
+// Reset mocks and cache before each test
 beforeEach(() => {
   const mp = global.__mockPrisma
   if (mp) {
@@ -94,6 +94,9 @@ beforeEach(() => {
       if (typeof fn.mockReset === 'function') fn.mockReset()
     })
   }
+  // Flush cache to prevent test pollution
+  const { flushAll } = require('../src/cache')
+  flushAll()
 })
 
 module.exports = {

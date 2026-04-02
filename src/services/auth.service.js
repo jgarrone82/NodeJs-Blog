@@ -1,5 +1,6 @@
 const bcrypt = require('bcrypt')
 const prisma = require('../../db')
+const { invalidateAuthors } = require('../cache')
 
 /**
  * AuthService — Business logic for authentication operations.
@@ -62,6 +63,9 @@ class AuthService {
         pseudonimo: pseudonimoTrimmed
       }
     })
+
+    // Invalidate author cache when a new author is registered
+    invalidateAuthors()
 
     return {
       id: autor.id,
