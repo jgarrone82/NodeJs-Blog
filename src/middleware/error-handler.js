@@ -1,4 +1,5 @@
 const config = require('../config/env')
+const logger = require('../logger')
 
 /**
  * Global error handling middleware.
@@ -19,10 +20,19 @@ function errorHandler(error, request, response, next) {
 
   // Log the error
   if (statusCode >= 500) {
-    console.error(`[ERROR] ${statusCode} — ${request.method} ${request.path}`)
-    console.error(error.stack || error)
+    logger.error({
+      statusCode,
+      method: request.method,
+      path: request.path,
+      stack: error.stack
+    }, error.message || 'Internal Server Error')
   } else {
-    console.warn(`[WARN] ${statusCode} — ${request.method} ${request.path}: ${message}`)
+    logger.warn({
+      statusCode,
+      method: request.method,
+      path: request.path,
+      message
+    }, message)
   }
 
   if (isApi) {
