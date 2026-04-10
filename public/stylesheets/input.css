@@ -11,20 +11,23 @@
 
 /* Custom theme - Blog de Viajes */
 @theme {
-  --color-primary: #2563eb;
-  --color-primary-dark: #1d4ed8;
-  --color-accent: #f59e0b;
-  --color-accent-dark: #d97706;
+  --color-primary: #6366f1;        /* Indigo 500 — vibrant modern blue */
+  --color-primary-dark: #4f46e5;    /* Indigo 600 */
+  --color-accent: #f97316;          /* Orange 500 — vibrant accent */
+  --color-accent-dark: #ea580c;     /* Orange 600 */
   --color-surface: #ffffff;
-  --color-surface-dark: #1e293b;
-  --color-background: #f3f4f6;
-  --color-background-dark: #0f172a;
-  --color-text: #1f2937;
-  --color-text-dark: #e5e7eb;
-  --color-text-muted: #6b7280;
-  --color-text-muted-dark: #9ca3af;
-  --color-border: #e5e7eb;
-  --color-border-dark: #374151;
+  --color-surface-dark: #1e293b;    /* Slate 800 */
+  --color-background: #f8fafc;      /* Slate 50 — lighter than before */
+  --color-background-dark: #0f172a; /* Slate 900 */
+  --color-text: #1e293b;            /* Slate 800 */
+  --color-text-dark: #f1f5f9;       /* Slate 100 */
+  --color-text-muted: #64748b;      /* Slate 500 */
+  --color-text-muted-dark: #94a3b8; /* Slate 400 */
+  --color-border: #e2e8f0;          /* Slate 200 */
+  --color-border-dark: #334155;     /* Slate 700 */
+
+  --font-heading: 'Poppins', sans-serif;
+  --font-body: 'Inter', sans-serif;
 }
 
 /* Enable dark mode variant */
@@ -65,9 +68,24 @@ body {
   @apply flex flex-col bg-primary-dark md:flex-row;
 }
 
+/* Full-screen mobile nav overlay */
+.mobile-nav-overlay {
+  @apply fixed inset-0 z-40 bg-primary flex flex-col items-center justify-center gap-6;
+  display: none;
+}
+
+.mobile-nav-overlay.open {
+  @apply flex;
+}
+
+.mobile-nav-overlay a {
+  @apply text-white text-2xl font-semibold py-3 px-8 hover:bg-primary-dark rounded-lg transition-colors;
+}
+
 /* Card styles */
 .post-card {
   @apply bg-surface rounded-lg shadow-md overflow-hidden transition-shadow hover:shadow-lg dark:bg-surface-dark;
+  border-top: 4px solid var(--color-accent);
 }
 
 .post-card h3 {
@@ -108,19 +126,20 @@ body {
 
 /* Button styles */
 .btn {
-  @apply inline-flex items-center justify-center px-4 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer border border-transparent;
+  @apply inline-flex items-center justify-center px-4 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer border border-transparent;
+  font-family: var(--font-body);
 }
 
 .btn-primary {
-  @apply bg-primary text-white hover:bg-primary-dark;
+  @apply bg-primary text-white hover:bg-primary-dark hover:shadow-lg active:scale-95;
 }
 
 .btn-accent {
-  @apply bg-accent text-white hover:bg-accent-dark;
+  @apply bg-accent text-white hover:bg-accent-dark hover:shadow-lg active:scale-95;
 }
 
 .btn-outline {
-  @apply bg-transparent border-border text-text hover:bg-background dark:border-border-dark dark:text-text-dark dark:hover:bg-surface-dark;
+  @apply bg-transparent border-2 border-primary text-primary hover:bg-primary hover:text-white dark:border-primary-dark dark:text-primary-dark dark:hover:bg-primary-dark dark:hover:text-white;
 }
 
 .btn-sm {
@@ -146,7 +165,23 @@ body {
 
 /* Footer */
 .site-footer {
-  @apply bg-text text-text-muted text-center py-6 mt-12 text-sm dark:bg-surface-dark dark:text-text-muted-dark;
+  @apply bg-text text-text-muted mt-12 py-12 text-sm dark:bg-surface-dark dark:text-text-muted-dark;
+}
+
+.footer-grid {
+  @apply grid grid-cols-1 md:grid-cols-4 gap-8 max-w-6xl mx-auto px-4;
+}
+
+.footer-section h4 {
+  @apply text-white font-semibold mb-4 font-heading;
+}
+
+.footer-section a {
+  @apply block py-1 hover:text-accent transition-colors;
+}
+
+.footer-bottom {
+  @apply text-center mt-8 pt-8 border-t border-white/10;
 }
 
 /* Alert styles */
@@ -231,4 +266,18 @@ body {
 /* Dark mode toggle button */
 .dark-toggle {
   @apply flex items-center justify-center w-10 h-10 rounded-md hover:bg-primary-dark transition-colors cursor-pointer;
+}
+
+/* Enhanced dark mode support */
+.dark .post-card {
+  @apply bg-surface-dark;
+  border-top-color: var(--color-accent);
+}
+
+/* Ensure form fields work in dark mode */
+.dark .form-field input[type="text"],
+.dark .form-field input[type="email"],
+.dark .form-field input[type="password"],
+.dark .form-field textarea {
+  @apply bg-surface border-border-dark text-text-dark;
 }

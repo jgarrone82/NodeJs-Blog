@@ -2,10 +2,14 @@
 <html lang="en">
 
 <head>
+  <script>(function(){var t=localStorage.getItem('theme');if(t==='dark'||(!t&&window.matchMedia('(prefers-color-scheme:dark)').matches)){document.documentElement.classList.add('dark')}})()</script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="X-UA-Compatible" content="ie=edge">
-  <title>Blog Viajes</title>
+  <title>Admin - Nomad Notes</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/stylesheets/styles.css">
 </head>
 
@@ -27,10 +31,10 @@
       <table class="data-table min-w-full">
         <thead>
           <tr>
-            <th>Título</th>
-            <th class="hidden sm:table-cell">Resumen</th>
-            <th>Votos</th>
-            <th>Acciones</th>
+            <th>Title</th>
+            <th class="hidden sm:table-cell">Summary</th>
+            <th>Votes</th>
+            <th>Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -43,13 +47,13 @@
               <div class="flex flex-col sm:flex-row gap-2 sm:gap-1">
                 <a href="/admin/editar/<%=publicacion.id%>" class="text-primary hover:text-primary-dark transition-colors text-xs sm:text-sm">
                   <svg class="w-4 h-4 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
-                  Editar
+                  Edit
                 </a>
-                <form action="/admin/procesar_eliminar" method="POST" style="display:inline" onsubmit="return confirm('¿Está seguro de eliminar: <%=publicacion.titulo%>?')">
+                <form action="/admin/procesar_eliminar" method="POST" style="display:inline" onsubmit="return confirm('Are you sure you want to delete: <%=publicacion.titulo%>?')">
                   <input type="hidden" name="id" value="<%=publicacion.id%>">
                   <button type="submit" class="text-red-600 hover:text-red-800 transition-colors bg-transparent border-none cursor-pointer p-0 text-xs sm:text-sm">
                     <svg class="w-4 h-4 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-                    Eliminar
+                    Delete
                   </button>
                 </form>
               </div>
@@ -63,7 +67,7 @@
     <hr class="border-border my-4 sm:my-6">
     <a href="/admin/agregar" class="btn btn-primary">
       <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-      Agregar Publicación
+      Add Post
     </a>
   </main>
 
