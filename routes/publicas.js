@@ -7,6 +7,7 @@ const { validateRegister, validateLogin, validateIdParam } = require('../validat
 const asyncHandler = require('../src/utils/async-handler')
 const { PostService, AuthService, AuthorService } = require('../src/services')
 const logger = require('../src/logger')
+const prisma = require('../db')
 
 // Initialize services
 const postService = new PostService()
@@ -38,9 +39,24 @@ function enviarCorreoBienvenida(email, nombre) {
 router.get('/', asyncHandler(async (peticion, respuesta) => {
   const busqueda = peticion.query.busqueda || ''
   const pagina = peticion.query.pagina ? parseInt(peticion.query.pagina) : 0
+  const limit = 5
 
-  const publicaciones = await postService.list({ busqueda, pagina })
-  respuesta.render('index', { publicaciones, busqueda, pagina })
+  const publicaciones = await postService.list({ busqueda, pagina, limit })
+
+  // Calculate total pages for pagination
+  const whereClause = busqueda
+    ? {
+        OR: [
+          { titulo: { contains: busqueda } },
+          { resumen: { contains: busqueda } },
+          { contenido: { contains: busqueda } }
+        ]
+      }
+    : {}
+  const total = await prisma.publicacion.count({ where: whereClause })
+  const totalPages = Math.ceil(total / limit)
+
+  respuesta.render('index', { publicaciones, busqueda, pagina, totalPages })
 }))
 
 // GET /registro — Registration form
@@ -102,7 +118,8 @@ router.post('/procesar_inicio', authLimiter, validateLogin, asyncHandler(async (
 // GET /publicacion/:id — View single post
 router.get('/publicacion/:id', validateIdParam, asyncHandler(async (peticion, respuesta) => {
   const publicacion = await postService.getById(peticion.params.id)
-  respuesta.render('publicacion', { publicacion })
+  const relatedPosts = await postService.getRelatedPosts(publicacion.id, publicacion.autorId)
+  respuesta.render('publicacion', { publicacion, relatedPosts })
 }))
 
 // GET /autores — List authors with publications
@@ -111,11 +128,11 @@ router.get('/autores', asyncHandler(async (peticion, respuesta) => {
   respuesta.render('autores', { autores })
 }))
 
-// GET /publicacion/:id/votar — Vote for a post
+// GET /publicacion/:id/votar — Vote for a post (fallback, non-AJAX)
 router.get('/publicacion/:id/votar', validateIdParam, asyncHandler(async (peticion, respuesta) => {
-  const voted = await postService.vote(peticion.params.id)
+  const result = await postService.vote(peticion.params.id)
 
-  if (voted) {
+  if (result.success) {
     respuesta.redirect(`/publicacion/${peticion.params.id}`)
   } else {
     peticion.flash('mensaje', 'Publicación inválida')

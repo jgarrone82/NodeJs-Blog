@@ -11,10 +11,14 @@ const postService = new PostService()
 // GET /admin/index — Dashboard with author's posts
 router.get('/admin/index', asyncHandler(async (peticion, respuesta) => {
   const publicaciones = await postService.getByAuthor(peticion.session.usuario.id)
+  const totalPosts = publicaciones.length
+  const totalVotes = publicaciones.reduce((sum, p) => sum + (p.votos || 0), 0)
   respuesta.render('admin/index', {
     usuario: peticion.session.usuario,
     mensaje: peticion.flash('mensaje'),
-    publicaciones
+    publicaciones,
+    totalPosts,
+    totalVotes
   })
 }))
 

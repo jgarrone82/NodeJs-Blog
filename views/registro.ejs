@@ -1,135 +1,112 @@
-<!DOCTYPE html>
-<html lang="en">
+<% locals.title = 'Sign Up - Nomad Notes' %>
 
-<head>
-  <script>(function(){var t=localStorage.getItem('theme');if(t==='dark'||(!t&&window.matchMedia('(prefers-color-scheme:dark)').matches)){document.documentElement.classList.add('dark')}})()</script>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="X-UA-Compatible" content="ie=edge">
-  <title>Sign Up - Nomad Notes</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/stylesheets/styles.css">
-  <link rel="shortcut icon" type="image/png" href="images/favicon.png"/>
-  <script defer src="/javascripts/alpine.min.js"></script>
-</head>
+<main class="page-container">
+  <div class="max-w-md mx-auto" x-data="registerForm()">
+    <h1 class="text-2xl sm:text-3xl font-bold mb-2">Sign Up</h1>
+    <p class="text-text-muted mb-6 text-sm sm:text-base">Enter your details to become a new author</p>
 
-<body>
-  <%- include('./partials/encabezado_publico') %>
-
-  <main class="page-container">
-    <div class="max-w-md mx-auto" x-data="registerForm()">
-      <h1 class="text-2xl sm:text-3xl font-bold mb-2">Sign Up</h1>
-      <p class="text-text-muted mb-6 text-sm sm:text-base">Enter your details to become a new author</p>
-
-      <!-- Toast notification -->
-      <div x-show="toast.show" x-transition class="fixed top-16 right-4 z-50 max-w-sm">
-        <div :class="toast.type === 'error' ? 'alert-error' : 'alert-success'" class="alert shadow-lg">
-          <span x-text="toast.message"></span>
-        </div>
+    <!-- Toast notification -->
+    <div x-show="toast.show" x-transition class="fixed top-16 right-4 z-50 max-w-sm">
+      <div :class="toast.type === 'error' ? 'alert-error' : 'alert-success'" class="alert shadow-lg">
+        <span x-text="toast.message"></span>
       </div>
-
-      <% if (mensaje && mensaje.length > 0) { %>
-      <div class="alert alert-info">
-        <svg class="w-5 h-5 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-        <%=mensaje%>
-      </div>
-      <% } %>
-
-      <form action="/procesar_registro" method="POST" encType="multipart/form-data" class="bg-surface p-4 sm:p-6 rounded-lg shadow-md" @submit="onSubmit">
-        <h2 class="text-base sm:text-lg font-semibold mb-4 pb-3 border-b border-border">New author</h2>
-        
-        <div class="form-field">
-          <label for="email">Email</label>
-          <input type="email" id="email" name="email" x-model="email" @blur="validateEmail" :class="errors.email ? 'border-red-500 focus:ring-red-500' : ''" required />
-          <p x-show="errors.email" x-text="errors.email" class="text-red-600 text-xs mt-1"></p>
-        </div>
-        
-        <div class="form-field">
-          <label for="contrasena">Password</label>
-          <input type="password" id="contrasena" name="contrasena" x-model="contrasena" @input="checkPasswordStrength" :class="errors.contrasena ? 'border-red-500 focus:ring-red-500' : ''" required />
-          <!-- Password strength indicator -->
-          <div x-show="contrasena.length > 0" class="mt-2">
-            <div class="flex gap-1 mb-1">
-              <div class="h-1 flex-1 rounded-full" :class="strength.score >= 1 ? (strength.score < 3 ? 'bg-red-500' : 'bg-green-500') : 'bg-gray-200'"></div>
-              <div class="h-1 flex-1 rounded-full" :class="strength.score >= 2 ? (strength.score < 3 ? 'bg-orange-500' : 'bg-green-500') : 'bg-gray-200'"></div>
-              <div class="h-1 flex-1 rounded-full" :class="strength.score >= 3 ? 'bg-green-500' : 'bg-gray-200'"></div>
-            </div>
-            <p class="text-xs" :class="strength.score < 2 ? 'text-red-600' : (strength.score < 3 ? 'text-orange-600' : 'text-green-600')" x-text="strength.label"></p>
-          </div>
-          <p x-show="errors.contrasena" x-text="errors.contrasena" class="text-red-600 text-xs mt-1"></p>
-        </div>
-        
-        <div class="form-field">
-          <label for="pseudonimo">Pen name</label>
-          <input type="text" id="pseudonimo" name="pseudonimo" x-model="pseudonimo" :class="errors.pseudonimo ? 'border-red-500 focus:ring-red-500' : ''" required />
-          <p x-show="errors.pseudonimo" x-text="errors.pseudonimo" class="text-red-600 text-xs mt-1"></p>
-        </div>
-        
-        <div class="form-field">
-          <label for="avatar">Avatar</label>
-          <input type="file" id="avatar" name="avatar"/>
-        </div>
-        
-        <button type="submit" class="btn btn-primary w-full" :disabled="loading">
-          <svg x-show="loading" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-          <span x-text="loading ? 'Sending...' : 'Continue'"></span>
-        </button>
-      </form>
     </div>
-  </main>
 
-  <%- include('./partials/pie') %>
-  <script src="/javascripts/script.js"></script>
-  <script>
-    function registerForm() {
-      return {
-        email: '',
-        contrasena: '',
-        pseudonimo: '',
-        loading: false,
-        errors: { email: '', contrasena: '', pseudonimo: '' },
-        strength: { score: 0, label: '' },
-        toast: { show: false, message: '', type: 'success' },
-        
-        validateEmail() {
-          if (this.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.email)) {
-            this.errors.email = 'Please enter a valid email'
-          } else {
-            this.errors.email = ''
-          }
-        },
-        
-        checkPasswordStrength() {
-          const p = this.contrasena
-          let score = 0
-          if (p.length >= 6) score++
-          if (p.length >= 8 && /[A-Z]/.test(p) && /[a-z]/.test(p)) score++
-          if (p.length >= 10 && /[0-9]/.test(p) && /[^A-Za-z0-9]/.test(p)) score++
-          this.strength.score = score
-          this.strength.label = score === 0 ? 'Very weak' : score === 1 ? 'Weak' : score === 2 ? 'Medium' : 'Strong'
-          if (score < 2) this.errors.contrasena = 'Use at least 8 characters with uppercase letters and numbers'
-          else this.errors.contrasena = ''
-        },
-        
-        onSubmit(e) {
-          this.validateEmail()
-          this.checkPasswordStrength()
-          if (!this.pseudonimo.trim()) this.errors.pseudonimo = 'Pen name is required'
-          else this.errors.pseudonimo = ''
-          
-          if (this.errors.email || this.errors.contrasena || this.errors.pseudonimo) {
-            e.preventDefault()
-            this.toast = { show: true, message: 'Please fix the form errors', type: 'error' }
-            setTimeout(() => this.toast.show = false, 3000)
-            return
-          }
-          this.loading = true
+    <% if (mensaje && mensaje.length > 0) { %>
+    <div class="alert alert-info">
+      <svg class="w-5 h-5 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+      <%=mensaje%>
+    </div>
+    <% } %>
+
+    <form action="/procesar_registro" method="POST" encType="multipart/form-data" class="bg-surface p-4 sm:p-6 rounded-lg shadow-md" @submit="onSubmit">
+      <h2 class="text-base sm:text-lg font-semibold mb-4 pb-3 border-b border-border">New author</h2>
+      
+      <div class="form-field">
+        <label for="email">Email</label>
+        <input type="email" id="email" name="email" x-model="email" @blur="validateEmail" :class="errors.email ? 'border-red-500 focus:ring-red-500' : ''" required />
+        <p x-show="errors.email" x-text="errors.email" class="text-red-600 text-xs mt-1"></p>
+      </div>
+      
+      <div class="form-field">
+        <label for="contrasena">Password</label>
+        <input type="password" id="contrasena" name="contrasena" x-model="contrasena" @input="checkPasswordStrength" :class="errors.contrasena ? 'border-red-500 focus:ring-red-500' : ''" required />
+        <!-- Password strength indicator -->
+        <div x-show="contrasena.length > 0" class="mt-2">
+          <div class="flex gap-1 mb-1">
+            <div class="h-1 flex-1 rounded-full" :class="strength.score >= 1 ? (strength.score < 3 ? 'bg-red-500' : 'bg-green-500') : 'bg-gray-200'"></div>
+            <div class="h-1 flex-1 rounded-full" :class="strength.score >= 2 ? (strength.score < 3 ? 'bg-orange-500' : 'bg-green-500') : 'bg-gray-200'"></div>
+            <div class="h-1 flex-1 rounded-full" :class="strength.score >= 3 ? 'bg-green-500' : 'bg-gray-200'"></div>
+          </div>
+          <p class="text-xs" :class="strength.score < 2 ? 'text-red-600' : (strength.score < 3 ? 'text-orange-600' : 'text-green-600')" x-text="strength.label"></p>
+        </div>
+        <p x-show="errors.contrasena" x-text="errors.contrasena" class="text-red-600 text-xs mt-1"></p>
+      </div>
+      
+      <div class="form-field">
+        <label for="pseudonimo">Pen name</label>
+        <input type="text" id="pseudonimo" name="pseudonimo" x-model="pseudonimo" :class="errors.pseudonimo ? 'border-red-500 focus:ring-red-500' : ''" required />
+        <p x-show="errors.pseudonimo" x-text="errors.pseudonimo" class="text-red-600 text-xs mt-1"></p>
+      </div>
+      
+      <div class="form-field">
+        <label for="avatar">Avatar</label>
+        <input type="file" id="avatar" name="avatar"/>
+      </div>
+      
+      <button type="submit" class="btn btn-primary w-full" :disabled="loading">
+        <svg x-show="loading" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+        <span x-text="loading ? 'Sending...' : 'Continue'"></span>
+      </button>
+    </form>
+  </div>
+</main>
+
+<script>
+  function registerForm() {
+    return {
+      email: '',
+      contrasena: '',
+      pseudonimo: '',
+      loading: false,
+      errors: { email: '', contrasena: '', pseudonimo: '' },
+      strength: { score: 0, label: '' },
+      toast: { show: false, message: '', type: 'success' },
+      
+      validateEmail() {
+        if (this.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.email)) {
+          this.errors.email = 'Please enter a valid email'
+        } else {
+          this.errors.email = ''
         }
+      },
+      
+      checkPasswordStrength() {
+        const p = this.contrasena
+        let score = 0
+        if (p.length >= 6) score++
+        if (p.length >= 8 && /[A-Z]/.test(p) && /[a-z]/.test(p)) score++
+        if (p.length >= 10 && /[0-9]/.test(p) && /[^A-Za-z0-9]/.test(p)) score++
+        this.strength.score = score
+        this.strength.label = score === 0 ? 'Very weak' : score === 1 ? 'Weak' : score === 2 ? 'Medium' : 'Strong'
+        if (score < 2) this.errors.contrasena = 'Use at least 8 characters with uppercase letters and numbers'
+        else this.errors.contrasena = ''
+      },
+      
+      onSubmit(e) {
+        this.validateEmail()
+        this.checkPasswordStrength()
+        if (!this.pseudonimo.trim()) this.errors.pseudonimo = 'Pen name is required'
+        else this.errors.pseudonimo = ''
+        
+        if (this.errors.email || this.errors.contrasena || this.errors.pseudonimo) {
+          e.preventDefault()
+          this.toast = { show: true, message: 'Please fix the form errors', type: 'error' }
+          setTimeout(() => this.toast.show = false, 3000)
+          return
+        }
+        this.loading = true
       }
     }
-  </script>
-</body>
-
-</html>
+  }
+</script>

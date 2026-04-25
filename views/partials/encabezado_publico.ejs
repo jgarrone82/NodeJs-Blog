@@ -50,22 +50,5 @@
     <a href="/" @click="mobileNavOpen = false" class="text-white text-2xl font-semibold py-3 px-8 hover:bg-primary-dark rounded-lg transition-colors">Home</a>
     <a href="/autores" @click="mobileNavOpen = false" class="text-white text-2xl font-semibold py-3 px-8 hover:bg-primary-dark rounded-lg transition-colors">Authors</a>
     <a href="/registro" @click="mobileNavOpen = false" class="text-white text-2xl font-semibold py-3 px-8 hover:bg-primary-dark rounded-lg transition-colors">Sign Up</a>
-    <a href="/inicio" @click="mobileNavOpen = false" class="text-white text-2xl font-semibold py-3 px-8 hover:bg-primary-dark rounded-lg transition-colors">Log In</a>
-  </div>
+  <a href="/inicio" @click="mobileNavOpen = false" class="text-white text-2xl font-semibold py-3 px-8 hover:bg-primary-dark rounded-lg transition-colors">Log In</a>
 </div>
-
-<script>
-  function darkMode() {
-    return {
-      isDark: false,
-      init() {
-        this.isDark = document.documentElement.classList.contains('dark');
-      },
-      toggle() {
-        this.isDark = !this.isDark;
-        document.documentElement.classList.toggle('dark');
-        localStorage.setItem('theme', this.isDark ? 'dark' : 'light');
-      }
-    }
-  }
-</script>

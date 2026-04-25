@@ -52,21 +52,4 @@
     </span>
     <a href="/admin/procesar_cerrar_sesion" @click="mobileNavOpen = false" class="text-white text-2xl font-semibold py-3 px-8 hover:bg-primary-dark rounded-lg transition-colors">Log Out</a>
     <a href="/admin/index" @click="mobileNavOpen = false" class="text-white text-2xl font-semibold py-3 px-8 hover:bg-primary-dark rounded-lg transition-colors">Admin</a>
-  </div>
 </div>
-
-<script>
-  function darkMode() {
-    return {
-      isDark: false,
-      init() {
-        this.isDark = document.documentElement.classList.contains('dark');
-      },
-      toggle() {
-        this.isDark = !this.isDark;
-        document.documentElement.classList.toggle('dark');
-        localStorage.setItem('theme', this.isDark ? 'dark' : 'light');
-      }
-    }
-  }
-</script>

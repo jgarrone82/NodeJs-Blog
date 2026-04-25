@@ -1,7 +1,43 @@
 <!-- Pagination Component -->
-<!-- Usage: include('partials/pagination', { currentPage, hasNext: true }) -->
+<!-- Usage: include('partials/pagination', { pagina, totalPages }) -->
+<% if (typeof totalPages !== 'undefined' && totalPages > 1) { %>
+<%
+  let startPage = Math.max(0, Math.min(pagina - 2, totalPages - 5));
+  let endPage = Math.min(totalPages, startPage + 5);
+%>
 <nav class="pagination">
-  <a href="/?pagina=<%=pagina-1%>"><< Previous</a>
-  <span>|</span>
-  <a href="/?pagina=<%=pagina+1%>">Next >></a>
+  <% if (pagina > 0) { %>
+    <a href="/?pagina=<%=pagina-1%>" class="pagination-item">← Prev</a>
+  <% } else { %>
+    <span class="pagination-item pagination-disabled">← Prev</span>
+  <% } %>
+
+  <% if (startPage > 0) { %>
+    <a href="/?pagina=0" class="pagination-item">1</a>
+    <% if (startPage > 1) { %>
+      <span class="pagination-ellipsis">…</span>
+    <% } %>
+  <% } %>
+
+  <% for (let i = startPage; i < endPage; i++) { %>
+    <% if (i === pagina) { %>
+      <span class="pagination-item pagination-active"><%=i+1%></span>
+    <% } else { %>
+      <a href="/?pagina=<%=i%>" class="pagination-item"><%=i+1%></a>
+    <% } %>
+  <% } %>
+
+  <% if (endPage < totalPages) { %>
+    <% if (endPage < totalPages - 1) { %>
+      <span class="pagination-ellipsis">…</span>
+    <% } %>
+    <a href="/?pagina=<%=totalPages-1%>" class="pagination-item"><%=totalPages%></a>
+  <% } %>
+
+  <% if (pagina < totalPages - 1) { %>
+    <a href="/?pagina=<%=pagina+1%>" class="pagination-item">Next →</a>
+  <% } else { %>
+    <span class="pagination-item pagination-disabled">Next →</span>
+  <% } %>
 </nav>
+<% } %>

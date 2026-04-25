@@ -179,18 +179,36 @@ class PostService {
 
   /**
    * Increment vote count for a post.
-   * Returns true if post exists and was voted.
+   * Returns { success: boolean, votos: number | null }.
    */
   async vote(id) {
     try {
-      await prisma.publicacion.update({
+      const updated = await prisma.publicacion.update({
         where: { id: parseInt(id) },
         data: { votos: { increment: 1 } }
       })
-      return true
+      return { success: true, votos: updated.votos }
     } catch (error) {
-      return false
+      return { success: false, votos: null }
     }
+  }
+
+  /**
+   * Get related posts by the same author, excluding the current post.
+   * Returns up to `limit` posts.
+   */
+  async getRelatedPosts(postId, autorId, limit = 3) {
+    const publicaciones = await prisma.publicacion.findMany({
+      where: {
+        autorId: parseInt(autorId),
+        id: { not: parseInt(postId) }
+      },
+      orderBy: { fechaHora: 'desc' },
+      take: limit,
+      include: { autor: true }
+    })
+
+    return publicaciones.map(this._toPublicFormat)
   }
 
   /**
@@ -199,6 +217,7 @@ class PostService {
    * views expect flat fields (pseudonimo, avatar).
    */
   _toPublicFormat(publicacion) {
+    const wordCount = publicacion.contenido ? publicacion.contenido.split(/\s+/).length : 0
     return {
       id: publicacion.id,
       titulo: publicacion.titulo,
@@ -207,7 +226,9 @@ class PostService {
       fecha_hora: publicacion.fechaHora,
       pseudonimo: publicacion.autor?.pseudonimo || '',
       votos: publicacion.votos,
-      avatar: publicacion.autor?.avatar || null
+      avatar: publicacion.autor?.avatar || null,
+      autorId: publicacion.autorId,
+      tiempo_lectura: Math.ceil(wordCount / 200) || 1
     }
   }
 }

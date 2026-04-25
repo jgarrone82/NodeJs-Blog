@@ -163,21 +163,81 @@ describe('PostService', () => {
     })
   })
 
+  describe('_toPublicFormat', () => {
+    it('should include tiempo_lectura based on word count', () => {
+      const mockPost = {
+        id: 1,
+        titulo: 'Test',
+        resumen: 'Summary',
+        contenido: 'one two three four five',
+        fechaHora: new Date('2024-01-01'),
+        votos: 3,
+        autorId: 2,
+        autor: { pseudonimo: 'Author', avatar: 'a.jpg' }
+      }
+
+      const result = service._toPublicFormat(mockPost)
+
+      expect(result).toHaveProperty('tiempo_lectura')
+      // 5 words / 200 = 0.025 -> ceil -> 1 (minimum)
+      expect(result.tiempo_lectura).toBe(1)
+    })
+
+    it('should calculate tiempo_lectura correctly for longer content', () => {
+      const words = Array(450).fill('word').join(' ')
+      const mockPost = {
+        id: 1,
+        titulo: 'Long',
+        resumen: 'Summary',
+        contenido: words,
+        fechaHora: new Date(),
+        votos: 0,
+        autorId: 1,
+        autor: { pseudonimo: 'A', avatar: null }
+      }
+
+      const result = service._toPublicFormat(mockPost)
+
+      expect(result.tiempo_lectura).toBe(3) // 450 / 200 = 2.25 -> ceil -> 3
+    })
+  })
+
   describe('vote', () => {
-    it('should return true when post exists', async () => {
-      mockPrisma.publicacion.update.mockResolvedValueOnce({ id: 1 })
+    it('should return success with new votos when post exists', async () => {
+      mockPrisma.publicacion.update.mockResolvedValueOnce({ id: 1, votos: 5 })
 
       const result = await service.vote(1)
 
-      expect(result).toBe(true)
+      expect(result).toEqual({ success: true, votos: 5 })
     })
 
-    it('should return false when post does not exist', async () => {
+    it('should return success false when post does not exist', async () => {
       mockPrisma.publicacion.update.mockRejectedValueOnce(new Error('Not found'))
 
       const result = await service.vote(999)
 
-      expect(result).toBe(false)
+      expect(result).toEqual({ success: false, votos: null })
+    })
+  })
+
+  describe('getRelatedPosts', () => {
+    it('should return up to 3 same-author posts excluding current', async () => {
+      const mockPosts = [
+        { id: 2, titulo: 'Related 1', contenido: 'a b', fechaHora: new Date(), autorId: 1, autor: { pseudonimo: 'A', avatar: null }, votos: 0, resumen: 'R1' },
+        { id: 3, titulo: 'Related 2', contenido: 'c d', fechaHora: new Date(), autorId: 1, autor: { pseudonimo: 'A', avatar: null }, votos: 0, resumen: 'R2' }
+      ]
+      mockPrisma.publicacion.findMany.mockResolvedValueOnce(mockPosts)
+
+      const result = await service.getRelatedPosts(1, 1)
+
+      expect(mockPrisma.publicacion.findMany).toHaveBeenCalledWith({
+        where: { autorId: 1, id: { not: 1 } },
+        orderBy: { fechaHora: 'desc' },
+        take: 3,
+        include: { autor: true }
+      })
+      expect(result).toHaveLength(2)
+      expect(result[0].id).toBe(2)
     })
   })
 })

@@ -11,6 +11,7 @@ const fileUpload = require('express-fileupload')
 const logger = require('./src/logger')
 const requestLogger = require('./src/middleware/request-logger')
 
+const expressLayouts = require('express-ejs-layouts')
 const rutasMiddleware = require('./routes/middleware')
 const rutasPublicas = require('./routes/publicas')
 const rutasPrivadas = require('./routes/privadas')
@@ -55,6 +56,8 @@ aplicacion.use(helmet({
 aplicacion.use(express.json())
 aplicacion.use(express.urlencoded({ extended: true }))
 aplicacion.set("view engine", "ejs")
+aplicacion.use(expressLayouts)
+aplicacion.set('layout', 'layouts/base')
 aplicacion.use(session({ secret: config.session.secret, resave: true, saveUninitialized: true }));
 aplicacion.use(flash())
 

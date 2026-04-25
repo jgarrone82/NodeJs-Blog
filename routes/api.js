@@ -6,6 +6,7 @@ const asyncHandler = require('../src/utils/async-handler')
 const { PostService, AuthService, AuthorService } = require('../src/services')
 const { NotFoundError, AuthenticationError, ValidationError, AuthorizationError } = require('../src/errors')
 const { authenticateJWT, generateToken } = require('../src/middleware/auth.middleware')
+const { invalidatePosts } = require('../src/cache')
 const prisma = require('../db')
 
 // Initialize services
@@ -349,6 +350,48 @@ router.post('/api/v1/autores/', authLimiter, validateApiCreateAuthor, asyncHandl
       id: resultado.id,
       email: resultado.email,
       pseudonimo: resultado.pseudonimo
+    }
+  })
+}))
+
+/**
+ * @swagger
+ * /api/v1/vote/{id}:
+ *   post:
+ *     summary: Vote for a post
+ *     tags: [Publicaciones]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: integer }
+ *     responses:
+ *       200:
+ *         description: Vote counted
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     votos: { type: integer }
+ *       404:
+ *         description: Post not found
+ */
+router.post('/api/v1/vote/:id', validateIdParam, asyncHandler(async (peticion, respuesta) => {
+  const result = await postService.vote(peticion.params.id)
+
+  if (!result.success) {
+    throw new NotFoundError('Publicación no encontrada')
+  }
+
+  invalidatePosts()
+
+  respuesta.json({
+    data: {
+      votos: result.votos
     }
   })
 }))

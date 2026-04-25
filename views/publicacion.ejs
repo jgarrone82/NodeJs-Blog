@@ -1,40 +1,56 @@
-<!DOCTYPE html>
-<html lang="en">
+<main class="page-container">
+  <article>
+    <!-- Post Header -->
+    <h1 class="text-2xl sm:text-4xl font-bold mb-4"><%=publicacion.titulo%></h1>
 
-<head>
-  <script>(function(){var t=localStorage.getItem('theme');if(t==='dark'||(!t&&window.matchMedia('(prefers-color-scheme:dark)').matches)){document.documentElement.classList.add('dark')}})()</script>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="X-UA-Compatible" content="ie=edge">
-  <title>Nomad Notes</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/stylesheets/styles.css">
-  <link rel="shortcut icon" type="image/png" href="images/favicon.png"/>
-</head>
-
-<body>
-  <%- include('./partials/encabezado_publico') %>
-
-  <main class="page-container">
-    <article>
-      <div class="flex flex-wrap items-center gap-2 sm:gap-3 mb-4">
-        <h1 class="text-xl sm:text-3xl font-bold"><%=publicacion.titulo%></h1>
-        <span class="vote-badge"><%=publicacion.votos%></span>
+    <!-- Metadata Bar -->
+    <div class="meta-bar mb-6">
+      <div class="meta-author">
+        <% if (publicacion.avatar && publicacion.avatar != "") { %>
+          <img class="avatar" src="/avatars/<%=publicacion.avatar%>" alt="Avatar"/>
+        <% } else { %>
+          <svg class="w-6 h-6 text-text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+        <% } %>
+        <span class="font-medium"><%=publicacion.pseudonimo%></span>
       </div>
-      <button class="btn btn-accent btn-sm mb-6">
-        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5"/></svg>
-        +1 Vote
+      <span class="meta-separator">|</span>
+      <div class="meta-item">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+        <span><%= publicacion.fecha_hora.getFullYear() %>/<%= String(publicacion.fecha_hora.getMonth()+1).padStart(2,'0') %>/<%= String(publicacion.fecha_hora.getDate()).padStart(2,'0') %></span>
+      </div>
+      <span class="meta-separator">|</span>
+      <div class="meta-item">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+        <span><%=publicacion.tiempo_lectura%> min read</span>
+      </div>
+    </div>
+
+    <!-- Vote Button (AJAX) -->
+    <div x-data="votePost(<%=publicacion.id%>)" x-init="init()" class="mb-6">
+      <button @click="vote()" :disabled="loading" class="btn btn-accent btn-sm">
+        <svg x-show="!loading" class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5"/></svg>
+        <svg x-show="loading" class="w-4 h-4 mr-1 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+        <span x-text="loading ? 'Voting...' : '+1 Vote'"></span>
       </button>
-      <div class="prose">
-        <%-publicacion.contenido%>
-      </div>
-    </article>
-  </main>
+      <span id="vote-count" class="vote-badge" x-text="votos"><%=publicacion.votos%></span>
+      <p x-show="error" x-transition class="text-red-600 text-sm mt-2" x-text="error"></p>
+    </div>
 
-  <%- include('./partials/pie') %>
-  <script src="/javascripts/script.js"></script>
-</body>
+    <!-- Post Content -->
+    <div class="prose mb-12">
+      <%-publicacion.contenido%>
+    </div>
 
-</html>
+    <!-- Related Posts -->
+    <% if (relatedPosts && relatedPosts.length > 0) { %>
+      <section class="border-t border-border pt-8 dark:border-border-dark">
+        <h2 class="text-xl font-bold mb-4">More from <%=publicacion.pseudonimo%></h2>
+        <div class="post-grid">
+          <% relatedPosts.forEach(related => { %>
+            <%- include('partials/post_card', { publicacion: related, featured: false }) %>
+          <% }) %>
+        </div>
+      </section>
+    <% } %>
+  </article>
+</main>

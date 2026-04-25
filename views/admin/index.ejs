@@ -1,32 +1,64 @@
-<!DOCTYPE html>
-<html lang="en">
+<% locals.title = 'Admin - Nomad Notes' %>
 
-<head>
-  <script>(function(){var t=localStorage.getItem('theme');if(t==='dark'||(!t&&window.matchMedia('(prefers-color-scheme:dark)').matches)){document.documentElement.classList.add('dark')}})()</script>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="X-UA-Compatible" content="ie=edge">
-  <title>Admin - Nomad Notes</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/stylesheets/styles.css">
-</head>
+<div class="admin-layout">
+  <%- include('../partials/admin_sidebar') %>
 
-<body>
-  <%- include('../partials/encabezado_privado') %>
-
-  <main class="page-container">
-    <h1 class="text-2xl sm:text-3xl font-bold mb-2">Admin - Mis publicaciones</h1>
+  <main class="flex-1 p-4 sm:p-6" x-data="adminDashboard()">
+    <h1 class="text-2xl sm:text-3xl font-bold mb-2">Dashboard</h1>
     <hr class="border-border mb-4 sm:mb-6">
 
     <% if (mensaje && mensaje.length > 0) { %>
     <div class="alert alert-info">
       <svg class="w-5 h-5 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-      <%=mensaje%>
+      <%= mensaje %>
     </div>
     <% } %>
 
+    <!-- Stats Cards -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+      <div class="stats-card">
+        <div class="stats-card-icon">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+        </div>
+        <div class="stats-card-value"><%= totalPosts %></div>
+        <div class="stats-card-label">Total Posts</div>
+      </div>
+      <div class="stats-card">
+        <div class="stats-card-icon">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/></svg>
+        </div>
+        <div class="stats-card-value"><%= totalVotes %></div>
+        <div class="stats-card-label">Total Votes</div>
+      </div>
+      <div class="stats-card">
+        <div class="stats-card-icon">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        </div>
+        <div class="stats-card-value"><%= publicaciones.length > 0 ? publicaciones[0].tiempo_lectura : 0 %> min</div>
+        <div class="stats-card-label">Latest Read Time</div>
+      </div>
+    </div>
+
+    <!-- Mobile sidebar toggle (inside main flow) -->
+    <button @click="$dispatch('toggle-sidebar')" class="md:hidden mb-4 inline-flex items-center gap-2 px-3 py-2 bg-primary text-white rounded-md text-sm font-medium hover:bg-primary-dark transition-colors">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+      Menu
+    </button>
+
+    <!-- Search & Filter -->
+    <div class="flex flex-col sm:flex-row gap-3 mb-4">
+      <div class="relative flex-1">
+        <svg class="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+        <input type="text" x-model="search" placeholder="Search posts by title..." class="w-full pl-10 pr-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary dark:bg-surface-dark dark:border-border-dark dark:text-text-dark transition-shadow">
+      </div>
+      <select x-model="status" class="px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary dark:bg-surface-dark dark:border-border-dark dark:text-text-dark transition-shadow">
+        <option value="all">All Posts</option>
+        <option value="with_votes">With Votes</option>
+        <option value="no_votes">No Votes</option>
+      </select>
+    </div>
+
+    <!-- Posts Table -->
     <div class="overflow-x-auto -mx-3 sm:-mx-4 px-3 sm:px-4">
       <table class="data-table min-w-full">
         <thead>
@@ -38,19 +70,19 @@
           </tr>
         </thead>
         <tbody>
-          <% publicaciones.forEach( (publicacion) => { %>
-          <tr>
-            <td class="font-medium"><%=publicacion.titulo%></td>
-            <td class="text-text-muted hidden sm:table-cell"><%=publicacion.resumen%></td>
-            <td><span class="vote-badge"><%=publicacion.votos%></span></td>
+          <% publicaciones.forEach((publicacion) => { %>
+          <tr x-show='matches(<%= JSON.stringify(publicacion.titulo) %>, <%= publicacion.votos %>)'>
+            <td class="font-medium"><%= publicacion.titulo %></td>
+            <td class="text-text-muted hidden sm:table-cell"><%= publicacion.resumen %></td>
+            <td><span class="vote-badge"><%= publicacion.votos %></span></td>
             <td>
               <div class="flex flex-col sm:flex-row gap-2 sm:gap-1">
-                <a href="/admin/editar/<%=publicacion.id%>" class="text-primary hover:text-primary-dark transition-colors text-xs sm:text-sm">
+                <a href="/admin/editar/<%= publicacion.id %>" class="text-primary hover:text-primary-dark transition-colors text-xs sm:text-sm">
                   <svg class="w-4 h-4 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
                   Edit
                 </a>
-                <form action="/admin/procesar_eliminar" method="POST" style="display:inline" onsubmit="return confirm('Are you sure you want to delete: <%=publicacion.titulo%>?')">
-                  <input type="hidden" name="id" value="<%=publicacion.id%>">
+                <form action="/admin/procesar_eliminar" method="POST" style="display:inline" onsubmit="return confirm('Are you sure you want to delete: <%= publicacion.titulo.replace(/'/g, '\\\'') %>?')">
+                  <input type="hidden" name="id" value="<%= publicacion.id %>">
                   <button type="submit" class="text-red-600 hover:text-red-800 transition-colors bg-transparent border-none cursor-pointer p-0 text-xs sm:text-sm">
                     <svg class="w-4 h-4 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                     Delete
@@ -70,9 +102,4 @@
       Add Post
     </a>
   </main>
-
-  <%- include('../partials/pie') %>
-  <script src="/javascripts/script.js"></script>
-</body>
-
-</html>
+</div>

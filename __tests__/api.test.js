@@ -278,6 +278,38 @@ describe('Security Headers (Helmet)', () => {
   })
 })
 
+describe('POST /api/v1/vote/:id', () => {
+    it('debería retornar 200 con votos incrementados', async () => {
+      mockPrisma.publicacion.update.mockResolvedValueOnce({ id: 1, votos: 6 })
+
+      const res = await request(app).post('/api/v1/vote/1')
+
+      expect(res.status).toBe(200)
+      expect(res.body).toHaveProperty('data')
+      expect(res.body.data).toHaveProperty('votos', 6)
+      expect(mockPrisma.publicacion.update).toHaveBeenCalledWith({
+        where: { id: 1 },
+        data: { votos: { increment: 1 } }
+      })
+    })
+
+    it('debería retornar 404 cuando la publicación no existe', async () => {
+      mockPrisma.publicacion.update.mockRejectedValueOnce(new Error('Record not found'))
+
+      const res = await request(app).post('/api/v1/vote/999')
+
+      expect(res.status).toBe(404)
+      expect(res.body).toHaveProperty('error')
+    })
+
+    it('debería rechazar ID inválido (texto)', async () => {
+      const res = await request(app).post('/api/v1/vote/abc')
+
+      expect(res.status).toBe(400)
+      expect(res.body).toHaveProperty('error')
+    })
+  })
+
 describe('Rate Limiting', () => {
   it('debería tener rate limiting configurado en rutas API', async () => {
     mockPrisma.publicacion.findMany.mockResolvedValueOnce([])

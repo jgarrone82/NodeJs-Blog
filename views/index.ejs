@@ -1,32 +1,18 @@
-<!DOCTYPE html>
-<html lang="en">
+<main>
+  <!-- Hero Section -->
+  <section class="hero-section">
+    <div class="page-container text-center">
+      <h1 class="hero-title">Nomad Notes</h1>
+      <p class="hero-tagline">Share Your Journey</p>
+    </div>
+  </section>
 
-<head>
-  <script>(function(){var t=localStorage.getItem('theme');if(t==='dark'||(!t&&window.matchMedia('(prefers-color-scheme:dark)').matches)){document.documentElement.classList.add('dark')}})()</script>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="X-UA-Compatible" content="ie=edge">
-  <title>Nomad Notes</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/stylesheets/styles.css">
-  <link rel="shortcut icon" type="image/png" href="images/favicon.png"/>
-</head>
-
-<body>
-  <%- include('partials/encabezado_publico') %>
-
-  <main class="page-container">
-    <img src="images/fondo.jpg" class="hero-image" alt="Blog de Viajes">
-    <h1 class="text-2xl sm:text-3xl font-bold mb-2">Home</h1>
-    <p class="text-text-muted mb-6 text-sm sm:text-base">Check out our latest posts:</p>
-
+  <div class="page-container">
     <!-- Search Form -->
     <form class="mb-6 sm:mb-8 text-center" action="/">
       <label for="busqueda" class="block text-sm font-medium text-text mb-2">Search posts</label>
       <div class="flex flex-col sm:flex-row gap-2 max-w-md mx-auto">
-        <input type="text" id="busqueda" name="busqueda" value="<%=busqueda%>" 
+        <input type="text" id="busqueda" name="busqueda" value="<%=busqueda%>"
                class="form-field flex-1 mb-0" placeholder="Search..."/>
         <button type="submit" class="btn btn-primary">
           <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
@@ -35,19 +21,24 @@
       </div>
     </form>
 
-    <!-- Posts List -->
-    <div class="space-y-4 sm:space-y-6">
-      <% publicaciones.forEach(publicacion => { %>
-        <%- include('partials/post_card', { publicacion: publicacion }) %>
-      <% }) %>
-    </div>
+    <% if (publicaciones.length > 0) { %>
+      <!-- Featured Post -->
+      <% const featured = publicaciones[0]; %>
+      <%- include('partials/post_card', { publicacion: featured, featured: true }) %>
+
+      <!-- Post Grid -->
+      <% if (publicaciones.length > 1) { %>
+        <div class="post-grid">
+          <% publicaciones.slice(1).forEach(publicacion => { %>
+            <%- include('partials/post_card', { publicacion: publicacion, featured: false }) %>
+          <% }) %>
+        </div>
+      <% } %>
+    <% } else { %>
+      <p class="text-text-muted text-center py-12">No posts found.</p>
+    <% } %>
 
     <!-- Pagination -->
-    <%- include('partials/pagination') %>
-  </main>
-
-  <%- include('partials/pie') %>
-  <script src="/javascripts/script.js"></script>
-</body>
-
-</html>
+    <%- include('partials/pagination', { pagina: pagina, totalPages: totalPages }) %>
+  </div>
+</main>
